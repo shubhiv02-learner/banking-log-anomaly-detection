@@ -3,36 +3,32 @@
  SENTINELIQ LOG GENERATION COMPLETED 
 ================================================
 
-Total Logs Generated : 5000
+Total Logs Generated : 15000
 
-Services Monitored:
-service
-portfolio-service       754
-trading-engine          752
-investment-engine       733
-notification-service    703
-fraud-detection         700
-auth-service            684
-payment-api             674
+Services Monitored:service
+fraud-detection         2225
+auth-service            2204
+payment-api             2141
+investment-engine       2121
+trading-engine          2114
+notification-service    2106
+portfolio-service       2089
 
-Status Distribution:
-status
-success         4383
-queue_delay      167
-high_latency     156
-db_failure       155
-timeout          139
+Status Distribution:status
+success         14276
+queue_delay       422
+high_latency      283
+timeout            12
+db_failure          7
 
-Severity Distribution:
-severity
-low         4383
-medium       323
-critical     294
+Severity Distribution:severity
+low         14276
+medium        705
+critical       19
 
-Sample Logs:
-             timestamp          service    endpoint   region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count
-0  2026-01-01T00:00:00  fraud-detection      /login  Germany         135      58.40         57.44          5  success       None      low            0
-1  2026-01-01T00:00:30     auth-service        /kyc  Germany         127      45.86         64.37          4  success       None      low            0
-2  2026-01-01T00:01:00   trading-engine  /portfolio  Germany         132      56.94         67.77          5  success       None      low            0
-3  2026-01-01T00:01:30      payment-api        /kyc      UAE         147      71.58         58.67          9  success       None      low            0
-4  2026-01-01T00:02:00      payment-api   /transfer    India         125      56.83         61.98          2  success       None      low            0
+Sample Logs:             timestamp               service     endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
+0  2026-01-01T00:00:00  notification-service       /login  Singapore          47      55.67         62.82          3  success       None      low            0           0
+1  2026-01-01T00:00:30     investment-engine  /withdrawal        USA          95      64.41         61.42          4  success       None      low            0           0
+2  2026-01-01T00:01:00        trading-engine    /transfer      India         121      61.68         87.11          5  success       None      low            0           0
+3  2026-01-01T00:01:30     portfolio-service   /portfolio      India         121      68.11         49.57          4  success       None      low            0           0
+4  2026-01-01T00:02:00           payment-api  /withdrawal      India         189      44.38         49.07          4  success       None      low            0           0
