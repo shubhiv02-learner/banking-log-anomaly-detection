@@ -52,70 +52,80 @@ os.makedirs("outputs", exist_ok=True)
 # CONFIGURATION
 # ============================================================
 
-TOTAL_LOGS = 5000
+TOTAL_LOGS = 15000
 
 START_TIME = datetime(2026, 1, 1)
 
 SERVICES = [
-
     "payment-api",
-
     "auth-service",
-
     "trading-engine",
-
     "fraud-detection",
-
     "notification-service",
-
     "portfolio-service",
-
     "investment-engine"
 ]
 
 ENDPOINTS = [
-
     "/login",
-
     "/transfer",
-
     "/payment",
-
     "/trade",
-
     "/portfolio",
-
     "/kyc",
-
     "/withdrawal"
 ]
 
+# Map services to their specific endpoints
+SERVICE_ENDPOINTS_MAP = {
+    "payment-api": ["/payment", "/transfer", "/withdrawal"],
+    "auth-service": ["/login", "/kyc"],
+    "trading-engine": ["/trade", "/payment", "/transfer"],
+    "fraud-detection": ["/kyc", "/payment", "/transfer"],
+    "notification-service": ["/login", "/transfer", "/payment"],
+    "portfolio-service": ["/portfolio", "/trade"],
+    "investment-engine": ["/trade", "/portfolio", "/withdrawal"]
+}
+
+# Map services to their base latencies
+SERVICE_LATENCY_MAP = {
+    "payment-api": 150,
+    "auth-service": 80,
+    "trading-engine": 100,
+    "fraud-detection": 200,
+    "notification-service": 70,
+    "portfolio-service": 120,
+    "investment-engine": 130
+}
+
 REGIONS = [
-
     "India",
-
     "Singapore",
-
     "USA",
-
     "Germany",
-
     "UAE"
 ]
 
 STATUS_TYPES = [
-
     "success",
-
     "timeout",
-
     "db_failure",
-
     "high_latency",
-
     "queue_delay"
 ]
 
+# ANOMALY CONFIGURATION: Inject anomalies in three specific windows
+ANOMALY_WINDOWS = [
+    (int(TOTAL_LOGS * 0.1), int(TOTAL_LOGS * 0.12)), # 10-12% of logs
+    (int(TOTAL_LOGS * 0.4), int(TOTAL_LOGS * 0.42)), # 40-42% of logs
+    (int(TOTAL_LOGS * 0.7), int(TOTAL_LOGS * 0.72))  # 70-72% of logs
+]
+ANOMALY_PROB_IN_WINDOW = 0.8  # High probability of anomaly within a window
+ANOMALY_PROB_OUT_WINDOW = 0.001 # Low probability of anomaly outside a window
+
+# Define anomaly types and their weights to achieve the desired distribution
+anomaly_types_for_selection = ["timeout", "db_failure", "high_latency", "queue_delay"]
+anomaly_weights_for_selection = [0.03, 0.01, 0.4, 0.56] # 4% critical, 96% medium
 
 # ============================================================
 # GENERATE SINGLE LOG EVENT
@@ -142,78 +152,63 @@ def generate_log_event(index):
     )
 
     # --------------------------------------------------------
-    # Randomly select banking service
+    # Randomly select banking service and its associated endpoint
     # --------------------------------------------------------
 
     service = random.choice(SERVICES)
-
-    endpoint = random.choice(ENDPOINTS)
+    possible_endpoints = SERVICE_ENDPOINTS_MAP.get(service, ENDPOINTS) # Default to all endpoints if service not in map
+    endpoint = random.choice(possible_endpoints)
 
     region = random.choice(REGIONS)
 
     # --------------------------------------------------------
-    # Generate normal operational metrics
+    # Generate normal operational metrics with service-specific latency
     # --------------------------------------------------------
 
+    base_latency = SERVICE_LATENCY_MAP.get(service, 120) # Default to 120 if service not in map
     latency_ms = int(
-        np.random.normal(120, 20)
+        np.random.normal(base_latency, 20) # Randomize around the base_latency
     )
-
-    cpu_usage = round(
-        np.random.normal(55, 8),
-        2
-    )
-
-    memory_usage = round(
-        np.random.normal(60, 10),
-        2
-    )
-
-    queue_lag = max(
-        0,
-        int(np.random.normal(5, 2))
-    )
-
+    cpu_usage = round(np.random.normal(55, 8),2)
+    memory_usage = round(np.random.normal(60, 10),2)
+    queue_lag = max(0,int(np.random.normal(5, 2)))
     error_code = None
-
     status = "success"
-
     severity = "low"
-
     error_count = 0 # Initialize error_count
-
+    is_anomaly = 0 # Initialize is_anomaly
     # --------------------------------------------------------
-    # Inject anomalies probabilistically
-    # --------------------------------------------------------
-    # Roughly 12% anomalous behavior
+    # Inject anomalies probabilistically based on defined windows
     # --------------------------------------------------------
 
-    anomaly_probability = random.random()
+    in_anomaly_window = False
+    for start, end in ANOMALY_WINDOWS:
+        if start <= index <= end:
+            in_anomaly_window = True
+            break
 
-    if anomaly_probability < 0.12:
+    anomaly_roll = random.random()
 
-        anomaly_type = random.choice(
-            STATUS_TYPES[1:]
-        )
+    # Determine anomaly probability based on whether the current index is in an anomaly window
+    current_anomaly_probability = ANOMALY_PROB_IN_WINDOW if in_anomaly_window else ANOMALY_PROB_OUT_WINDOW
+
+    if anomaly_roll < current_anomaly_probability:
+        is_anomaly = 1
+        # Select anomaly type based on defined weights
+        anomaly_type = random.choices(anomaly_types_for_selection, weights=anomaly_weights_for_selection, k=1)[0]
 
         # =========================================
         # TIMEOUT EVENT
         # =========================================
 
         if anomaly_type == "timeout":
-
-            latency_ms += random.randint(300, 700)
-
+            
+            latency_ms =max(base_latency+10,int(np.random.normal(base_latency, 100))) # Randomize around the base_latency
             cpu_usage += random.randint(10, 30)
-
             queue_lag += random.randint(10, 40)
-
             error_code = "TIMEOUT_ERROR"
-
             status = "timeout"
-
             severity = "critical"
-
             error_count = random.randint(5, 10) # Assign a numerical error count
 
         # =========================================
@@ -222,85 +217,59 @@ def generate_log_event(index):
 
         elif anomaly_type == "db_failure":
 
-            latency_ms += random.randint(200, 500)
-
+            latency_ms =max(base_latency+10,int(np.random.normal(base_latency, 80))) # Randomize around the base_latency
             cpu_usage += random.randint(5, 20)
-
             memory_usage += random.randint(10, 20)
-
             error_code = "DB_CONNECTION_FAILURE"
-
             status = "db_failure"
-
             severity = "critical"
-
             error_count = random.randint(5, 10) # Assign a numerical error count
-
+            
         # =========================================
         # HIGH LATENCY EVENT
         # =========================================
 
         elif anomaly_type == "high_latency":
-
-            latency_ms += random.randint(150, 350)
-
+            latency_ms =max(base_latency+30,int(np.random.normal(base_latency, 80))) # Randomize around the base_latency
             queue_lag += random.randint(5, 15)
-
             error_code = "LATENCY_SPIKE"
-
             status = "high_latency"
-
             severity = "medium"
-
             error_count = random.randint(2, 5) # Assign a numerical error count
-
+            
         # =========================================
         # QUEUE DELAY EVENT
         # =========================================
 
         elif anomaly_type == "queue_delay":
 
+            latency_ms =max(base_latency+20,int(np.random.normal(base_latency, 50))) # Randomize around the base_latenc
             queue_lag += random.randint(20, 60)
-
-            latency_ms += random.randint(80, 200)
-
             error_code = "QUEUE_BACKPRESSURE"
-
             status = "queue_delay"
-
             severity = "medium"
-
             error_count = random.randint(2, 5) # Assign a numerical error count
-
+            
     # --------------------------------------------------------
     # Create structured log event
     # --------------------------------------------------------
+    latency_ms = abs(latency_ms)
 
     log_event = {
 
         "timestamp": timestamp.isoformat(),
-
         "service": service,
-
         "endpoint": endpoint,
-
         "region": region,
-
         "latency_ms": latency_ms,
-
         "cpu_usage": round(cpu_usage, 2),
-
         "memory_usage": round(memory_usage, 2),
-
         "queue_lag": queue_lag,
-
         "status": status,
-
         "error_code": error_code,
-
         "severity": severity,
-
-        "error_count": error_count # Add error_count to the log event
+        "error_count": error_count, # Add error_count to the log event
+         "is_anomaly": is_anomaly # Add is_anamoly to the log event
     }
 
     return log_event
@@ -398,23 +367,14 @@ def display_statistics(df):
     output_string.write("\n================================================")
     output_string.write("\n SENTINELIQ LOG GENERATION COMPLETED ")
     output_string.write("\n================================================\n")
-
     output_string.write(f"\nTotal Logs Generated : {len(df)}\n")
-
-    output_string.write("\nServices Monitored:\n")
-
+    output_string.write("\nServices Monitored:")
     output_string.write(df['service'].value_counts().to_string())
-
-    output_string.write("\n\nStatus Distribution:\n")
-
+    output_string.write("\n\nStatus Distribution:")
     output_string.write(df['status'].value_counts().to_string())
-
-    output_string.write("\n\nSeverity Distribution:\n")
-
+    output_string.write("\n\nSeverity Distribution:")
     output_string.write(df['severity'].value_counts().to_string())
-
-    output_string.write("\n\nSample Logs:\n")
-
+    output_string.write("\n\nSample Logs:")
     output_string.write(df.head().to_string())
 
     # Print to stdout as well for immediate display
