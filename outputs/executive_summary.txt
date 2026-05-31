@@ -3,14 +3,14 @@
     SENTINELIQ OPERATIONAL SUMMARY
     --------------------------------
     Total Incidents : 15000
-    Critical Incidents : 1
-    High Incidents   : 322
-    Medioum Incidents   : 1583
+    Critical Incidents : 0
+    High Incidents   : 285
+    Medioum Incidents   : 1735
 
 
     OBSERVATIONS
     ------------
- 
+
     - Sustained latency degradation detected
     - Infrastructure pressure increasing
     - Multiple correlated anomaly windows identified

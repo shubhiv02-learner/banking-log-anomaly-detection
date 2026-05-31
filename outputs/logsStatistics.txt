@@ -1,0 +1,34 @@
+
+================================================
+ SENTINELIQ LOG GENERATION COMPLETED 
+================================================
+
+Total Logs Generated : 15000
+
+Services Monitored:service
+trading-engine          2206
+auth-service            2165
+notification-service    2149
+investment-engine       2140
+fraud-detection         2127
+payment-api             2112
+portfolio-service       2101
+
+Status Distribution:status
+success         14282
+queue_delay       399
+high_latency      293
+timeout            24
+db_failure          2
+
+Severity Distribution:severity
+low         14282
+medium        692
+critical       26
+
+Sample Logs:             timestamp               service   endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
+0  2026-01-01T00:00:00           payment-api  /transfer    Germany         188      36.70         50.44          6  success       None      low            0           0
+1  2026-01-01T00:00:30        trading-engine     /trade    Germany          36      54.04         58.01          9  success       None      low            0           0
+2  2026-01-01T00:01:00        trading-engine     /trade  Singapore         141      57.50         64.92          3  success       None      low            0           0
+3  2026-01-01T00:01:30  notification-service  /transfer        USA          57      54.69         41.29          3  success       None      low            0           0
+4  2026-01-01T00:02:00  notification-service     /login        USA          97      59.28         56.71          3  success       None      low            0           0
