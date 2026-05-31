@@ -60,8 +60,8 @@ def apply_ewma_detection(df, alpha=0.3):
     deviation_alert_threshold = (
         df['ewma_latency_deviation_for_alert'].abs().mean()+2 * df['ewma_latency_deviation_for_alert'].std()
         )
-    print(f"Raw Latency Plot Threshold (for dashboard): {raw_latency_plot_threshold}")
-    print(f"Deviation Alert Threshold (for detection): {deviation_alert_threshold}")
+    #print(f"Raw Latency Plot Threshold (for dashboard): {raw_latency_plot_threshold}")
+    #print(f"Deviation Alert Threshold (for detection): {deviation_alert_threshold}")
     # Flag anomalous drift regions based on deviation
     df['ewma_alert'] = (
         (df['ewma_latency_deviation_for_alert'].abs() > deviation_alert_threshold)
@@ -125,7 +125,7 @@ def apply_cusum_detection(df):
             # Date has changed, reset the CUSUM sum for the new day
             current_cusum_sum = 0.0
             prev_date = current_date
-          
+
 
         # Calculate CUSUM for the current point
         current_cusum_sum = round(max(0.0, current_cusum_sum + (latency_dev - target - k)), 2)

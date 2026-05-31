@@ -67,7 +67,7 @@ def generate_dashboard(df, threshold):
 
     pyplot.xticks(rotation=45)
 
-    pyplot.savefig("outputs/latency_chart.png")
+    pyplot.savefig("visualizations/latency_chart.png")
 
     pyplot.show()
 
@@ -99,7 +99,7 @@ def generate_executive_summary(df):
 
     OBSERVATIONS
     ------------
- 
+
     - Sustained latency degradation detected
     - Infrastructure pressure increasing
     - Multiple correlated anomaly windows identified
@@ -141,7 +141,7 @@ def generate_executive_summary_report(df):
     # PDF REPORT GENERATION
     # ============================================================
 
-    pdf_file = "outputs/banking_anomaly_report.pdf"
+    pdf_file = "reports/banking_anomaly_report.pdf"
 
     styles = getSampleStyleSheet()
     content = []
@@ -219,7 +219,7 @@ def generate_executive_summary_report(df):
     ))
 
     # PNG image path
-    image_path = "outputs/latency_chart.png"
+    image_path = "visualizations/latency_chart.png"
 
     # Add image
     img = Image(image_path, width=450, height=250)
