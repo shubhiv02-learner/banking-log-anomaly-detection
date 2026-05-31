@@ -125,7 +125,7 @@ ANOMALY_PROB_OUT_WINDOW = 0.001 # Low probability of anomaly outside a window
 
 # Define anomaly types and their weights to achieve the desired distribution
 anomaly_types_for_selection = ["timeout", "db_failure", "high_latency", "queue_delay"]
-anomaly_weights_for_selection = [0.03, 0.01, 0.4, 0.56] # 4% critical, 96% medium
+anomaly_weights_for_selection = [0.038, 0.002, 0.4, 0.56] # 4% critical, 96% medium
 
 # ============================================================
 # GENERATE SINGLE LOG EVENT
@@ -202,8 +202,8 @@ def generate_log_event(index):
         # =========================================
 
         if anomaly_type == "timeout":
-            
-            latency_ms =max(base_latency+10,int(np.random.normal(base_latency, 100))) # Randomize around the base_latency
+
+            latency_ms =max(base_latency+50,int(np.random.normal(base_latency, 100))) # Randomize around the base_latency
             cpu_usage += random.randint(10, 30)
             queue_lag += random.randint(10, 40)
             error_code = "TIMEOUT_ERROR"
@@ -218,13 +218,13 @@ def generate_log_event(index):
         elif anomaly_type == "db_failure":
 
             latency_ms =max(base_latency+10,int(np.random.normal(base_latency, 80))) # Randomize around the base_latency
-            cpu_usage += random.randint(5, 20)
+            cpu_usage += random.randint(20, 50)
             memory_usage += random.randint(10, 20)
             error_code = "DB_CONNECTION_FAILURE"
             status = "db_failure"
             severity = "critical"
             error_count = random.randint(5, 10) # Assign a numerical error count
-            
+
         # =========================================
         # HIGH LATENCY EVENT
         # =========================================
@@ -236,7 +236,7 @@ def generate_log_event(index):
             status = "high_latency"
             severity = "medium"
             error_count = random.randint(2, 5) # Assign a numerical error count
-            
+
         # =========================================
         # QUEUE DELAY EVENT
         # =========================================
@@ -249,7 +249,7 @@ def generate_log_event(index):
             status = "queue_delay"
             severity = "medium"
             error_count = random.randint(2, 5) # Assign a numerical error count
-            
+
     # --------------------------------------------------------
     # Create structured log event
     # --------------------------------------------------------
