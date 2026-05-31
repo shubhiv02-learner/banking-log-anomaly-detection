@@ -254,8 +254,7 @@ SentinelIQ is evolving toward a multi-layer anomaly intelligence platform combin
 # Installation
 
 ```bash
-git clone https://github.com/your-username/sentineliq.git
-cd sentineliq
+git clone https://github.com/shubhiv02-learner/banking-log-anomaly-detection.git
 pip install -r requirements.txt
 ```
 
@@ -267,7 +266,7 @@ Run the notebooks directly in Google Colab:
 
 ```python
 # Open notebook
-SentinelIQ_Anomaly_Detection.ipynb
+SentinelIq.ipynb
 ```
 
 ---
@@ -278,6 +277,3 @@ MIT License
 
 ---
 
-# Author
-
-Divyansh Verma
