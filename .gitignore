@@ -1,1 +1,76 @@
-"venv/" 
+
+# Google Colab
+*.ipynb_checkpoints
+.ipynb_checkpoints/
+
+# Colab generated files
+sample_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Logs
+*.log
+
+# Environment Variables
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Model Artifacts (optional)
+# Uncomment if models are large or regenerated
+# models/*.pkl
+# models/*.joblib
+
+# Output Files
+#output/
+#results/
+#predictions/
+#alerts/
+
+# Temporary Data
+temp/
+tmp/
+
+# SQLite Databases
+*.db
+*.sqlite3
+
+# Kafka Local Data (if stored inside project)
+kafka-logs/
+kraft-combined-logs/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Coverage / Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build Artifacts
+build/
+dist/
+*.egg-info/
+
+data/*.csv
+
+
