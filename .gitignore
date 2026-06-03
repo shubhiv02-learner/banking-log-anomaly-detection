@@ -41,10 +41,10 @@ Thumbs.db
 # models/*.joblib
 
 # Output Files
-#output/
-#results/
-#predictions/
-#alerts/
+output/
+visualizations/
+models/
+notebooks/notebooks
 
 # Temporary Data
 temp/
