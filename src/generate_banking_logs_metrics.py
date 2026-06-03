@@ -209,11 +209,11 @@ def apply_bayesian_prioritization(df):
     import pandas
     df['incident_probability'] = (round(
 
-        0.4 * (df['persistence_score'] / max(df['persistence_score'].max(),1))
+        0.4 * (df['persistence_score'] / df['persistence_score'].max())
         +
-        0.3 * (df['error_count']/max(df['error_count'].max())
+        0.3 * (df['error_count']/df['error_count'].max())
         +
-        0.3 * (df['cpu_usage']/max(df['cpu_usage'].max()), 2)
+        0.3 * (df['cpu_usage']/df['cpu_usage'].max()), 2)
     )
 
     df['priority'] = pandas.cut(df['incident_probability'], bins=[0, 0.3, 0.5, 0.7,1],
