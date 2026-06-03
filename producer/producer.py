@@ -14,6 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 csv_path = BASE_DIR / "data" / "banking_logs.csv"
 
 logs = pd.read_csv(csv_path)
+print(logs.head())
+
 
 for _, row in logs.iterrows():
 
