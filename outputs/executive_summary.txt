@@ -4,8 +4,8 @@
     --------------------------------
     Total Incidents : 15000
     Critical Incidents : 0
-    High Incidents   : 285
-    Medioum Incidents   : 1735
+    High Incidents   : 407
+    Medioum Incidents   : 1538
 
 
     OBSERVATIONS

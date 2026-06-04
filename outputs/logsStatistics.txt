@@ -6,29 +6,29 @@
 Total Logs Generated : 15000
 
 Services Monitored:service
-trading-engine          2206
-auth-service            2165
-notification-service    2149
-investment-engine       2140
-fraud-detection         2127
-payment-api             2112
-portfolio-service       2101
+fraud-detection         2186
+investment-engine       2176
+portfolio-service       2157
+notification-service    2146
+payment-api             2123
+auth-service            2114
+trading-engine          2098
 
 Status Distribution:status
-success         14282
-queue_delay       399
-high_latency      293
-timeout            24
-db_failure          2
+success         14257
+queue_delay       419
+high_latency      295
+timeout            26
+db_failure          3
 
 Severity Distribution:severity
-low         14282
-medium        692
-critical       26
+low         14257
+medium        714
+critical       29
 
-Sample Logs:             timestamp               service   endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
-0  2026-01-01T00:00:00           payment-api  /transfer    Germany         188      36.70         50.44          6  success       None      low            0           0
-1  2026-01-01T00:00:30        trading-engine     /trade    Germany          36      54.04         58.01          9  success       None      low            0           0
-2  2026-01-01T00:01:00        trading-engine     /trade  Singapore         141      57.50         64.92          3  success       None      low            0           0
-3  2026-01-01T00:01:30  notification-service  /transfer        USA          57      54.69         41.29          3  success       None      low            0           0
-4  2026-01-01T00:02:00  notification-service     /login        USA          97      59.28         56.71          3  success       None      low            0           0
+Sample Logs:             timestamp            service   endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
+0  2026-01-01T00:00:00    fraud-detection   /payment  Singapore         206      56.66         71.97          7  success        NaN      low            0           0
+1  2026-01-01T00:00:30  portfolio-service     /trade  Singapore         122      59.93         55.26          4  success        NaN      low            0           0
+2  2026-01-01T00:01:00     trading-engine   /payment    Germany         108      32.20         46.85          2  success        NaN      low            0           0
+3  2026-01-01T00:01:30       auth-service       /kyc        UAE          93      51.07         40.44          1  success        NaN      low            0           0
+4  2026-01-01T00:02:00     trading-engine  /transfer    Germany         134      54.29         60.76          2  success        NaN      low            0           0
