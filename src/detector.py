@@ -74,13 +74,8 @@ class EnsembleDetector:
         return X_scaled
 
     def score_window(self, window_df):
-        print("Scoring window:")
-        print(type(self.if_model))
-        print(type(self.ocsvm_model))
-        print(type(self.scaler))
-        print(type(self.label_encoder))
-        print(type(self.feature_columns))
-
+        #print("Scoring window:")
+        
         X_scaled = self.preprocess(window_df)
         if_scores = -self.if_model.decision_function(
             X_scaled
@@ -89,7 +84,8 @@ class EnsembleDetector:
         ocsvm_scores = -self.ocsvm_model.decision_function(
             X_scaled
         )
-
+        input("Press Enter to see the scores...")
+        print(f"Isolation Forest score: {if_scores[0]:.4f}, One-Class SVM score: {ocsvm_scores[0]:.4f}")
         return {
             "if_score_raw": float(if_scores[0]),
             "ocsvm_score_raw": float(ocsvm_scores[0])

@@ -1,137 +1,112 @@
-##Producer is combined to send alert messages to a separate topic when anomalies are detected. This allows for a streamlined architecture where the consumer not only detects anomalies but also handles the alerting mechanism without needing an additional service. The producer is configured to serialize messages as JSON, making it easy to integrate with various alerting tools that can consume from the 'banking-logs-anomalies' topic.
-#Processing a live Kafka stream sequentially means code must be optimized for speed, 
-# handle unexpected logging formats gracefully, and maintain zero memory leaks.
-# Kafka consumer loop reads incoming JSON logs, processes them with the pipeline we built,
-#  and routes the anomalies to a dedicated topic or alert dashboard.
-from operator import le
-from pyexpat import model
-import warnings
+#Kafka Message
+#      |
+#StreamMetrics.update()
+#     |
+#Buffer
+#     |
+#5-minute window complete?
+#     |
+#create_window_features()
+#     |
+#detector.score_window()
+#     |
+#ensemble score
+#     |
+#save to PostgreSQL
+from kafka import KafkaConsumer
 import json
-from narwhals import col
-from sklearn.exceptions import InconsistentVersionWarning
-from pathlib import Path
-import joblib
-import numpy as np
 import pandas as pd
-from sklearn.preprocessing import RobustScaler, LabelEncoder
-from sklearn.metrics import confusion_matrix, classification_report
-from kafka import KafkaConsumer, KafkaProducer
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict
 
-# Suppress the version mismatch warning
-warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
-warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+from src.stream_metrics import StreamMetrics
+from src.feature_engineering import create_window_features
+from src.detector import EnsembleDetector
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# 
-#robust_scaler = RobustScaler()
-
-# Load the Isolation Forest model
-try:
-    #Define path to the pre-trained Isolation Forest model
-    model_path = BASE_DIR / "models" / "Isolation_forest_RawData.joblib"
-    isolation_forest_model = joblib.load(model_path)
-    model_path = BASE_DIR / "models" / "robust_scaler.pkl"
-    robust_scaler = joblib.load(model_path  )
-    model_path = BASE_DIR / "models" / "label_encoder.pkl"
-    le = joblib.load(model_path)
-    print(f"Successfully loaded Isolation Forest model from {model_path}")
-except FileNotFoundError:
-    print(f"Error: Model file not found at {model_path}")
-    isolation_forest = None
+# Initialize components
+metrics_engine = StreamMetrics()
+detector = EnsembleDetector()
+service_buffers = defaultdict(list)
 
 
-
-# 1. Initialize your Kafka Consumer and Producer
+# Set up Kafka consumer
 consumer = KafkaConsumer(
-    'banking_logs',               # Your incoming log stream topic
-    bootstrap_servers=['localhost:9092'],
-    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-    auto_offset_reset='latest',       # Process new logs as they arrive
-    group_id='anomaly-detector-v1'
+    "banking_logs",
+    bootstrap_servers=["localhost:9092"],
+    value_deserializer=lambda m: json.loads(
+        m.decode("utf-8")
+    ),
+    auto_offset_reset="latest",
+    group_id="sentineliq-v1"
 )
+print("🚀 Consumer started, waiting for messages...")
 
-producer = KafkaProducer(
-    bootstrap_servers=['localhost:9092'],
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
-
-# Explicit feature mapping matching your training schema
-FEATURE_NAMES = ["service", "latency_ms", "cpu_usage", "queue_lag", "error_count"]
-NUMERIC_COLS = ["latency_ms", "cpu_usage", "queue_lag", "error_count"]
-
-print("🚀 Anomaly detection service is listening to Kafka stream...")
-
-cnt = 0 #adding temp logic to exit for loop after 5 
-        #messages for testing purpose, remove this in production
-# 2. Sequential Streaming Loop
-for message in consumer:
+while True:
     try:
-        data_json = message.value
-        cnt+=1
-        # Fast, defensive extraction of fields (handles missing keys gracefully)
-        raw_row = [
-            data_json.get("service", "unknown"),
-            data_json.get("latency_ms", np.nan),
-            data_json.get("cpu_usage", np.nan),
-            data_json.get("queue_lag", np.nan),
-            data_json.get("error_count", np.nan)
-        ]
-        print(f"Received log for service '{raw_row[0]}': {raw_row[1:]}")
+        current_time = datetime.now(timezone.utc)
+        window_start = current_time 
+        window_end = window_start + timedelta(minutes=1)
+        print(f"Current time: {current_time}, Window end time: {window_end}")
+        while current_time < window_end:
         
-        # 3. Create DataFrame directly (faster than raw NumPy array string conversion)
-        df_features = pd.DataFrame([raw_row], columns=FEATURE_NAMES)
-               
-        # 4. Transform string column (Label Encoder)
-        # Handle unseen services safely if they appear in production
-        try:
-            df_features["service"] = le.transform(df_features["service"])
-        except ValueError:
-            # Fallback for brand new services not present during model training
-            df_features["service"] = -1 
+            current_time = datetime.now(timezone.utc)
+            # Process messages - buffer for 5 minutes
         
-
-        # 5. Clean, fill missing data, and Scale
-        df_features[NUMERIC_COLS] = df_features[NUMERIC_COLS].apply(pd.to_numeric, errors='coerce')
-        df_features[NUMERIC_COLS] = df_features[NUMERIC_COLS].fillna(df_features[NUMERIC_COLS].median())
-        print(f"Filled missing values for service '{raw_row[0]}':{df_features[NUMERIC_COLS].iloc[0].tolist()}")
-        
-        print("SCALER EXPECTS THESE NAMES EXACTLY:", robust_scaler.feature_names_in_)
-
-        scaled_features = robust_scaler.transform(df_features)
-        print(f"Processed log for service '{raw_row[0]}': Scaled features ready for inference.")
-        # 6. Isolation Forest Inference
-        prediction = isolation_forest_model.predict(scaled_features)[0]  # Extract scalar
-        anomaly_score = isolation_forest_model.decision_function(scaled_features)[0]
-        print(f"Isolation Forest prediction: {prediction} | Anomaly Score: {anomaly_score:.4f}")
-        # 7. Route Anomalies (-1 means anomaly, 1 means normal)
-        if prediction == -1:
-            alert_payload = {
-                "status": "ANOMALY",
-                "score": float(anomaly_score),
-                "original_log": data_json
-            }
-            # Publish to dedicated anomaly topic for alerting tools (PagerDuty, Slack, etc.)
-            producer.send('banking-logs-anomalies', value=alert_payload)
-            print(f"⚠️ Anomaly flag raised for service '{raw_row[0]}' | Score: {anomaly_score:.4f}")
-            if cnt>=20 :#temp logic to exit for loop after 5 messages for testing purpose, remove this in production
-                print("Exiting after processing 5 messages for testing purposes.")
-                raise KeyboardInterrupt        
-    except Exception as e:
-        # Prevent the entire streaming pipeline from crashing over a single corrupted JSON body
-        print(f"❌ Error processing message: {str(e)}")
-        continue
+            print("⏳ Buffering data for 5-minute window...")
+            input(f"Press Enter to fetch the next message.in process window.{current_time}, Window end time: {window_end}")
+            
+            for message in consumer:
+                try:
+                    current_time = datetime.now(timezone.utc)
+                    if message is None:
+                        print("No message received, waiting...")
+                        continue
+                    record = message.value
+                    record["timestamp"] = (pd.to_datetime(record["timestamp"]))
+                    #print(f"Received record for service: {record['service']} at {record['timestamp']}")
+                    #print(f"Current time: {current_time}, Window end time: {window_end}")
+                    #input("Press Enter to fetch the next message..in try of processing .")
+                  
+                    metrics_engine.update(record)
+                    service = record["service"]
+                    service_buffers[record["service"]].append(record)
+                
+                    # Calculate EWMA/CUSUM/Persistence/IP  
+                    if current_time > window_end:
+                        print("⏰ 5-minute window complete, processing data...")
+                        print(f"service_buffers: { {k: len(v) for k, v in service_buffers.items()} } ") # Debug: print number of records per service
+                        #input("Press Enter to start processing data for window...")
+                        
+                        #window_start = current_time
+                        #window_end = window_start + timedelta(minutes=1)
+                        break
+                except Exception as e:
+                    print(f"Error processing message: {e}, continue with next message")
+                    continue
+            #Process each service's buffered data
+            for service, records in list(service_buffers.items()):
+                print(f"Processing service: {service} with {len(records)} records")
+                if len(records) == 0:
+                    continue
+                window_df = create_window_features(records)
+                score = detector.score_window(window_df)
+                print(f"Anomaly score for {service}: {score}")
+                service_buffers.clear()
+                #window_start = datetime.now(timezone.utc)
+                #window_end = window_start + timedelta(minutes=2)
+                print(f"New window started for service {service}. Current time: {current_time}, Window end time: {window_end}")   
+                
     except KeyboardInterrupt:
+        print("Consumer interrupted by user, shutting down...")
         print("\n🛑 Shutting down streaming pipeline gracefully...")
+        consumer.close()
+        break
+    except Exception as e:
+        consumer.close()
+        break
+      
+        #finally:
+         #   
+          
 
-    finally:
-        # This prevents the atexit crash by shutting down connections cleanly first
-        print("🔌 Closing Kafka connections...")
-        try:
-            producer.flush()  # Force send any buffered messages remaining in memory
-        except Exception as e:
-            print(f"Error during flush: {e}")
-        finally:
-            producer.close()  # Safely terminate the producer threads
-            consumer.close()  # Safely close the consumer connection
-            print("✅ Kafka connections closed successfully.")
+        

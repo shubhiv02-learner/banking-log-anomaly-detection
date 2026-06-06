@@ -82,6 +82,28 @@ The project evaluates anomaly detection methodologies across:
 ```
 
 ---
+Data Flow :
+
+Kafka Record
+      |
+stream_metrics.py
+      |
+EWMA
+CUSUM
+Persistence
+      |
+Buffer
+      |
+5-Min Aggregation
+      |
+feature_engineering.py
+      |
+Incident Probability
+Priority
+      |
+detector.py
+      |
+Final Ensemble
 
 # Features
 
