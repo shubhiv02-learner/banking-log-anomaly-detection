@@ -40,10 +40,11 @@ Thumbs.db
 # models/*.pkl
 # models/*.joblib
 
-# Output Files
-#output/
-#visualizations/
-#models/
+#Output Files
+output/
+visualizations/
+models/
+reports/
 #notebooks/notebooks
 
 # Temporary Data
@@ -71,6 +72,6 @@ build/
 dist/
 *.egg-info/
 
-data/*.csv
+data/
 
 
