@@ -6,29 +6,29 @@
 Total Logs Generated : 15000
 
 Services Monitored:service
-fraud-detection         2186
-investment-engine       2176
-portfolio-service       2157
-notification-service    2146
-payment-api             2123
-auth-service            2114
-trading-engine          2098
+payment-api             2187
+auth-service            2166
+portfolio-service       2166
+investment-engine       2161
+notification-service    2157
+fraud-detection         2124
+trading-engine          2039
 
 Status Distribution:status
-success         14257
-queue_delay       419
-high_latency      295
-timeout            26
-db_failure          3
+success         14274
+queue_delay       411
+high_latency      292
+timeout            22
+db_failure          1
 
 Severity Distribution:severity
-low         14257
-medium        714
-critical       29
+low         14274
+medium        703
+critical       23
 
-Sample Logs:             timestamp            service   endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
-0  2026-01-01T00:00:00    fraud-detection   /payment  Singapore         206      56.66         71.97          7  success        NaN      low            0           0
-1  2026-01-01T00:00:30  portfolio-service     /trade  Singapore         122      59.93         55.26          4  success        NaN      low            0           0
-2  2026-01-01T00:01:00     trading-engine   /payment    Germany         108      32.20         46.85          2  success        NaN      low            0           0
-3  2026-01-01T00:01:30       auth-service       /kyc        UAE          93      51.07         40.44          1  success        NaN      low            0           0
-4  2026-01-01T00:02:00     trading-engine  /transfer    Germany         134      54.29         60.76          2  success        NaN      low            0           0
+Sample Logs:             timestamp               service   endpoint   region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
+0  2026-01-01T00:00:00  notification-service     /login    India          96      53.62         51.80          6  success        NaN      low            0           0
+1  2026-01-01T00:00:30       fraud-detection  /transfer    India         181      47.35         60.03          6  success        NaN      low            0           0
+2  2026-01-01T00:01:00          auth-service     /login      UAE         116      54.05         51.36          4  success        NaN      low            0           0
+3  2026-01-01T00:01:30          auth-service     /login    India          40      72.61         68.21          7  success        NaN      low            0           0
+4  2026-01-01T00:02:00  notification-service  /transfer  Germany          70      61.42         56.99          7  success        NaN      low            0           0
