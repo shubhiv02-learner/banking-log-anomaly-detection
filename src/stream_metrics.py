@@ -8,6 +8,12 @@ from datetime import date
 
 from kafka import record
 
+from config import (
+    EWMA_ALPHA,
+    CUSUM_THRESHOLD,
+    CUSUM_ALERT_THRESHOLD,
+    EWMA_ALERT_THRESHOLD
+)
 
 class StreamMetrics:
 
@@ -25,8 +31,8 @@ class StreamMetrics:
             }
         )
 
-        self.alpha = 0.3
-        self.cusum_k = 10
+        self.alpha = EWMA_ALPHA
+        self.cusum_k = CUSUM_THRESHOLD
 
     def update(self, record):
 
@@ -79,11 +85,11 @@ class StreamMetrics:
         # -----------------
 
         ewma_alert = (
-            state["ewma"] > 100
+            state["ewma"] > EWMA_ALERT_THRESHOLD
         )
 
         cusum_alert = (
-            state["cusum"] > 200
+            state["cusum"] > CUSUM_ALERT_THRESHOLD
         )
 
         combined_alert = (
@@ -118,13 +124,10 @@ class StreamMetrics:
         # -----------------
         # Output Record
         # -----------------
-        #print(f"Service: {service}, EWMA: {state['ewma']:.2f}, CUSUM: {state['cusum']:.2f}, Persistence: {state['persistence']}, Incident Probability: {incident_probability:.2f}")
-        record["ewma"] = state["ewma"]
-        record["cusum"] = state["cusum"]
-        record["persistence_score"] = state["persistence"]
-        record["incident_probability"] = incident_probability
-        #record["priority"] = self.get_priority(incident_probability)
-        #Will show priority in the dashboard based on the ensemble model aggregated score, not the stream metrics score alone
+        record["ewma"] = float(state["ewma"])
+        record["cusum"] = float(state["cusum"])
+        record["persistence_score"] = float(state["persistence"])
+        record["incident_probability"] = float(incident_probability)
         return record
     
     def get_priority(prob):

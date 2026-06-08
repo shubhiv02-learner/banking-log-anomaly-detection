@@ -40,8 +40,6 @@ class EnsembleDetector:
             "error_count_sum"
         ]
 
-        print("✅ Detector initialized")
-
     def preprocess(self, window_df):
 
         df = window_df.copy()
@@ -77,16 +75,12 @@ class EnsembleDetector:
         #print("Scoring window:")
         
         X_scaled = self.preprocess(window_df)
-        if_scores = -self.if_model.decision_function(
-            X_scaled
-        )
-
-        ocsvm_scores = -self.ocsvm_model.decision_function(
-            X_scaled
-        )
-        input("Press Enter to see the scores...")
-        print(f"Isolation Forest score: {if_scores[0]:.4f}, One-Class SVM score: {ocsvm_scores[0]:.4f}")
+        if_scores = -self.if_model.decision_function(X_scaled)
+        ocsvm_scores = -self.ocsvm_model.decision_function(X_scaled)
+        if_score_raw = float(if_scores[0])
+        ocsvm_score_raw = float(ocsvm_scores[0])
+        #print(f"cusum: {window_df['cusum_max'].values[0}, OCSVM Score: {ocsvm_score_raw}")
         return {
-            "if_score_raw": float(if_scores[0]),
-            "ocsvm_score_raw": float(ocsvm_scores[0])
+            "if_score_raw": if_score_raw,
+            "ocsvm_score_raw": ocsvm_score_raw
         }
