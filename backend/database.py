@@ -2,8 +2,8 @@
 
 import os
 from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
+#from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+#from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 
 # 1. Load the variables from the .env file into system memory
@@ -30,6 +30,22 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("CRITICAL ERROR: DATABASE_URL is not set in the .env file.")
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    DATABASE_URL,
+    echo=False
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False
+)
+print("Session created successfully")
+##For now will use synchronous connection as Kafka is also synchronous
+"""
 # 3. Create your asynchronous SQLAlchemy engine
 engine = create_async_engine(DATABASE_URL, echo=True)
 print(f"DEBUG: Successfully created async engine with URL: {DATABASE_URL}")
@@ -46,3 +62,4 @@ print("DEBUG: Async session pool factory created successfully.")
 async def get_db_session():
     async with async_session_pool() as session:
         yield session
+"""

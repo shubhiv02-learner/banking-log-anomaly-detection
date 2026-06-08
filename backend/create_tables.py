@@ -1,5 +1,15 @@
 # create_tables.py
+# create_tables.py
 
+from database import engine
+from db_models import Base
+
+Base.metadata.create_all(bind=engine)
+
+print("Tables created successfully")
+
+#For now using synchronous connection
+"""
 import asyncio
 
 from database import engine
@@ -14,3 +24,4 @@ async def create_tables():
 
 asyncio.run(create_tables())
 print("Tables created successfully")
+"""

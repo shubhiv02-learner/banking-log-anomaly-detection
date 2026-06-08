@@ -12,11 +12,32 @@ class Alert(Base):
 
     __tablename__ = "alerts"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
 
-    timestamp = Column(DateTime)
+    window_metric_id = Column(Integer)
 
     service = Column(String)
+
+    final_score = Column(Float)
+
+    priority = Column(String)
+
+    created_at = Column(DateTime)
+
+    status = Column(String)   # Open, Acknowledged, Resolved
+
+class WindowMetrics(Base):
+
+    __tablename__ = "window_metrics"
+
+    id = Column(Integer, primary_key=True)
+
+    window_start = Column(DateTime)
+    window_end = Column(DateTime)
+
+    service = Column(String)
+
+    record_count = Column(Integer)
 
     latency_mean = Column(Float)
     latency_max = Column(Float)
@@ -31,6 +52,13 @@ class Alert(Base):
 
     error_count = Column(Integer)
 
+    ewma = Column(Float)
+    cusum = Column(Float)
+
+    persistence_score = Column(Float)
+
+    incident_probability = Column(Float)
+
     ml_score = Column(Float)
 
     statistical_score = Column(Float)
@@ -40,3 +68,5 @@ class Alert(Base):
     prediction = Column(Integer)
 
     priority = Column(String)
+
+    created_at = Column(DateTime)
