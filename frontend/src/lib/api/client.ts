@@ -18,14 +18,17 @@ export interface DashboardSummary {
   services_monitored: number;
   avg_risk_score: number;
 }
-
+export interface ServiceCount {
+  service: string;
+  count: number;
+}
 export const api = {
   health: () => http<{ status: string }>("/health"),
   dashboardSummary: () => http<DashboardSummary>("/dashboard/summary"),
   listAlerts: () => http<Alert[]>("/alerts"),
   recentAlerts: () => http<Alert[]>("/alerts/recent"),
   getAlert: (id: number) => http<Alert>(`/alerts/${id}`),
-  listServices: () => http<string[]>("/analytics/services"),
+  listServices: () => http<ServiceCount[]>("/analytics/services"),
   listWindowMetrics: () => http<WindowMetric[]>("/window-metrics"),
   recentWindowMetrics: () => http<WindowMetric[]>("/window-metrics/recent"),
   serviceTrend: (service: string) =>

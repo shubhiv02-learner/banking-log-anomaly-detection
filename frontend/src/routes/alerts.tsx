@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,7 +21,11 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
-import { api, serviceLabel } from "@/lib/api/client";
+import {
+  SERVICE_LABELS,
+  listAlerts,
+  listServices,
+} from "@/lib/api/placeholder-data";
 import type { AlertStatus, Priority } from "@/lib/api/types";
 
 export const Route = createFileRoute("/alerts")({
@@ -42,12 +45,8 @@ const PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"];
 const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 function AlertsPage() {
-  const alertsQ = useQuery({ queryKey: ["alerts"], queryFn: api.listAlerts });
-  const servicesQ = useQuery({ queryKey: ["services"], queryFn: api.listServices });
-
-  const all = alertsQ.data ?? [];
-  const services = servicesQ.data ?? [];
-
+  const all = listAlerts();
+  const services = listServices();
   const [q, setQ] = useState("");
   const [priority, setPriority] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -74,6 +73,7 @@ function AlertsPage() {
     p,
     n: all.filter((a) => a.priority === p).length,
   }));
+  console.log("services =", services);
 
   return (
     <div className="space-y-6">
@@ -136,7 +136,7 @@ function AlertsPage() {
                 <SelectItem value="all">All services</SelectItem>
                 {services.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {serviceLabel(s)}
+                    {SERVICE_LABELS[s] ?? s}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -165,7 +165,9 @@ function AlertsPage() {
               {filtered.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">#{a.id}</TableCell>
-                  <TableCell className="text-sm">{serviceLabel(a.service)}</TableCell>
+                  <TableCell className="text-sm">
+                    {SERVICE_LABELS[a.service] ?? a.service}
+                  </TableCell>
                   <TableCell>
                     <PriorityBadge priority={a.priority} />
                   </TableCell>
@@ -185,21 +187,7 @@ function AlertsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {alertsQ.isLoading && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                    Loading alerts…
-                  </TableCell>
-                </TableRow>
-              )}
-              {alertsQ.isError && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-destructive">
-                    Failed to load alerts: {(alertsQ.error as Error).message}
-                  </TableCell>
-                </TableRow>
-              )}
-              {!alertsQ.isLoading && !alertsQ.isError && filtered.length === 0 && (
+              {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={6}

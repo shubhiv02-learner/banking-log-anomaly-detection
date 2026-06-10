@@ -30,16 +30,21 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const servicesQ = useQuery({ queryKey: ["services"], queryFn: api.listServices });
-  const services = servicesQ.data ?? [];
+  
+  const servicesQ = useQuery({
+      queryKey: ["services"],
+      queryFn: api.listServices,
+      });
 
+  const services = servicesQ.data ?? [];
   const [service, setService] = useState<string>("");
   const [range, setRange] = useState<"1h" | "24h" | "7d">("24h");
 
-  useEffect(() => {
-    if (!service && services.length) setService(services[0]);
-  }, [services, service]);
-
+ useEffect(() => {
+  if (!service && services.length) {
+    setService(services[0].service);
+  }
+}, [services, service]);
   const trendQ = useQuery({
     queryKey: ["window-metrics", "service", service],
     queryFn: () => api.serviceTrend(service),
@@ -49,7 +54,11 @@ function AnalyticsPage() {
   const full = trendQ.data ?? [];
   const slice = range === "1h" ? full.slice(-12) : full;
   const latest = full[full.length - 1];
-
+  console.log("services =", services);
+  console.log("first service =", services[0]);
+  console.log("servicesQ", servicesQ);
+  console.log("services[0] =", services[0]);
+  console.log("typeof services[0] =", typeof services[0]);
   return (
     <div className="space-y-6">
       <Card>
@@ -60,10 +69,13 @@ function AnalyticsPage() {
             </SelectTrigger>
             <SelectContent>
               {services.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {serviceLabel(s)}
+                <SelectItem
+                  key={s.service}
+                      value={s.service}
+                  >
+                  {serviceLabel(s.service)}
                 </SelectItem>
-              ))}
+                ))}
             </SelectContent>
           </Select>
           <Tabs value={range} onValueChange={(v) => setRange(v as typeof range)}>

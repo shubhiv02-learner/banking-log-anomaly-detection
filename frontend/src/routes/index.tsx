@@ -51,6 +51,12 @@ function Dashboard() {
   const recent = (recentAlertsQ.data ?? []).slice(0, 6);
   const summary = summaryQ.data;
 
+  const uniqueLatest = Array.from(
+    new Map(
+      latest.map(item => [item.service, item])
+      ).values()
+   );
+
   // Aggregate trend across services: align by index of each service's trend.
   // Derived from `latest` to avoid extra fan-out queries on the dashboard.
   const aggregateBuckets: WindowMetric[] =
@@ -88,7 +94,7 @@ function Dashboard() {
         />
         <KpiCard
           label="Average Risk Score"
-          value={summary ? summary.avg_risk_score.toFixed(2) : "—"}
+          value={summary?.avg_risk_score ? summary.avg_risk_score.toFixed(2): "0.00"}
           icon={Gauge}
           accent={
             summary && summary.avg_risk_score > 0.6
@@ -113,16 +119,16 @@ function Dashboard() {
               Failed to load services: {(latestQ.error as Error).message}
             </p>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {latest.map((w) => (
-              <HealthTile
-                key={w.service}
-                service={serviceLabel(w.service)}
-                priority={w.priority}
-                score={w.final_score}
-              />
-            ))}
-          </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  {uniqueLatest.map((w) => (
+  	  <HealthTile
+      		key={w.service}
+      		service={serviceLabel(w.service)}
+      		priority={w.priority}
+      		score={w.final_score}
+    	  />
+  	))}
+      </div>
         </CardContent>
       </Card>
 
