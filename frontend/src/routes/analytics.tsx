@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,11 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
-import {
-  SERVICE_LABELS,
-  getServiceTrend,
-  listServices,
-} from "@/lib/api/placeholder-data";
+import { api, serviceLabel } from "@/lib/api/client";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -33,14 +30,24 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  const services = listServices();
-  const [service, setService] = useState(services[0]);
+  const servicesQ = useQuery({ queryKey: ["services"], queryFn: api.listServices });
+  const services = servicesQ.data ?? [];
+
+  const [service, setService] = useState<string>("");
   const [range, setRange] = useState<"1h" | "24h" | "7d">("24h");
 
-  const full = getServiceTrend(service);
-  const slice =
-    range === "1h" ? full.slice(-12) : range === "24h" ? full : full;
+  useEffect(() => {
+    if (!service && services.length) setService(services[0]);
+  }, [services, service]);
 
+  const trendQ = useQuery({
+    queryKey: ["window-metrics", "service", service],
+    queryFn: () => api.serviceTrend(service),
+    enabled: !!service,
+  });
+
+  const full = trendQ.data ?? [];
+  const slice = range === "1h" ? full.slice(-12) : full;
   const latest = full[full.length - 1];
 
   return (
@@ -49,20 +56,17 @@ function AnalyticsPage() {
         <CardContent className="flex flex-wrap items-center gap-3 p-3">
           <Select value={service} onValueChange={setService}>
             <SelectTrigger className="h-9 w-56">
-              <SelectValue />
+              <SelectValue placeholder="Select service" />
             </SelectTrigger>
             <SelectContent>
               {services.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {SERVICE_LABELS[s] ?? s}
+                  {serviceLabel(s)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Tabs
-            value={range}
-            onValueChange={(v) => setRange(v as typeof range)}
-          >
+          <Tabs value={range} onValueChange={(v) => setRange(v as typeof range)}>
             <TabsList>
               <TabsTrigger value="1h">1h</TabsTrigger>
               <TabsTrigger value="24h">24h</TabsTrigger>
@@ -83,6 +87,14 @@ function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+
+      {trendQ.isError && (
+        <Card>
+          <CardContent className="p-4 text-sm text-destructive">
+            Failed to load metrics: {(trendQ.error as Error).message}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <TrendChart
@@ -131,7 +143,7 @@ function AnalyticsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Current Window — {SERVICE_LABELS[service] ?? service}
+              Current Window — {serviceLabel(service)}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
