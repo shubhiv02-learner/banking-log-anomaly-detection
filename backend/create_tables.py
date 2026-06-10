@@ -1,8 +1,7 @@
 # create_tables.py
-# create_tables.py
 
-from database import engine
-from db_models import Base
+from backend.database import engine
+from backend.db_models import Base
 
 Base.metadata.create_all(bind=engine)
 

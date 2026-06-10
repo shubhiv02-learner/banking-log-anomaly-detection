@@ -12,7 +12,9 @@
 #     |
 #ensemble score
 #     |
-#save to PostgreSQL
+#save to PostgreSQL - window_metrics → increasing every window
+#                   alerts → increasing only when anomaly detected
+import numpy as np
 from kafka import KafkaConsumer
 import json
 from numpy import rint
@@ -26,6 +28,10 @@ from src.detector import EnsembleDetector
 from src.ensemble import EnsembleEngine
 from config import WINDOW_SIZE_MINUTES
 
+from backend.db_services import (
+    save_window_metric,
+    save_alert
+)
 # Initialize components
 metrics_engine = StreamMetrics()
 detector = EnsembleDetector()
@@ -85,14 +91,58 @@ try:
                             "cusum": window_df.iloc[0]["cusum_max"],
                             "persistence":window_df.iloc[0]["persistence_score_mean"],
                             "incident_probability":window_df.iloc[0]["incident_probability_mean"]}
-                    print(f"Ensemble input: if_score: {ensemble_input['if_score']} ocsvm_score: {ensemble_input['ocsvm_score']}") # Debug: print ensemble input
+                    #print(f"Ensemble input: if_score: {ensemble_input['if_score']} ocsvm_score: {ensemble_input['ocsvm_score']}") # Debug: print ensemble input
                     ensemble_result = ensemble.predict(ensemble_input) #Final ensemble score + priority
+                    print(f"In consumer Ensemble result: {ensemble_result}")
+                    print(f"In consumer window_df.columns before renameing : {window_df.columns}")
+                    #Column names to match database table names
+                    window_df = window_df.rename(columns={
+                        "latency_ms_mean": "latency_mean",
+                        "latency_ms_max": "latency_max",
+                        "latency_ms_std": "latency_std",
+
+                        "cpu_usage_mean": "cpu_mean",
+                        "cpu_usage_max": "cpu_max",
+
+                        "memory_usage_mean": "memory_mean",
+                        "ewma_mean": "ewma",
+                        "cusum_max": "cusum",
+                        
+                        "persistence_score_mean": "persistence_score",
+                        "incident_probability_mean": "incident_probability",
+
+                         "error_count_sum": "error_count"
+                        })
+                    print(f"In consumer before enrichment {window_df.columns}")
+                    #Enrich it to save additional info in database
+                    window_df["service"] = service
+                    window_df["ml_score"] = ensemble_result["ml_score"]
+                    window_df["statistical_score"] = ensemble_result["statistical_score"]
+                    window_df["final_score"] = ensemble_result["final_score"]
+                    window_df["prediction"] = np.array(ensemble_result["prediction"]).astype(int)
+                    window_df["priority"] = ensemble_result["priority"]                    
+                    window_df["window_start"] = window_start
+                    window_df["window_end"] = window_end
+                    window_df["record_count"] = len(records)
+                    window_metric_data = window_df.iloc[0].to_dict()
+                    print(f"In consumer window metric data {window_metric_data}")
+                    metric = save_window_metric(window_metric_data)
+                    print(f"In consumer metric data saved ")
                     if ensemble_result["prediction"]:
                         print(
                                 f"ALERT: {service} "
                                 f"{ensemble_result['priority']} "
                                 f"score={ensemble_result['final_score']}"
                             )
+                        alert_data = {
+                                    "window_metric_id": metric.id,
+                                    "service": service,
+                                    "final_score":
+                                        ensemble_result["final_score"],
+                                    "priority":
+                                        ensemble_result["priority"],
+                                }
+                        save_alert(alert_data)
                 
                 service_buffers.clear()
                 window_start = datetime.now(timezone.utc)

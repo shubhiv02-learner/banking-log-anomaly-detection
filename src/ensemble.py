@@ -89,7 +89,6 @@ class EnsembleEngine:
         return "Low"
 
     def predict(self,features):
-        #print(f"Ensemble input inside predict 1: {features}")
         if_score = features["if_score"]
         ocsvm_score = features["ocsvm_score"]
         ewma = features["ewma"]
@@ -97,27 +96,17 @@ class EnsembleEngine:
         persistence = features["persistence"]
         incident_probability = features["incident_probability"]
 
-        #print(f"Ensemble input inside predict2: {features}")
         # -----------------------------
         # ML Normalization
         # -----------------------------
         
-        print(f"Normalize Raw ML scores - IF: {if_score}, OCSVM: {ocsvm_score}, ewma: {ewma}, cusum: {cusum}, persistence: {persistence}, incident_probability: {incident_probability}")
-        #input("Press Enter to normalize scores...")
         if_norm = (self.if_normalizer.normalize(if_score))
-
-        ocsvm_norm = (
-            self.ocsvm_normalizer.normalize(
-                ocsvm_score
-            )
-        )
+        ocsvm_norm = (self.ocsvm_normalizer.normalize(ocsvm_score))
 
         ml_score = (
-
             ML_IF_WEIGHT * if_norm
             +
             ML_OCSVM_WEIGHT * ocsvm_norm
-
         )
 
         # -----------------------------
@@ -165,11 +154,9 @@ class EnsembleEngine:
         # -----------------------------
 
         final_score = (
-
             FINAL_ML_WEIGHT * ml_score
             +
             FINAL_STAT_WEIGHT * statistical_score
-
         )
 
         prediction = (

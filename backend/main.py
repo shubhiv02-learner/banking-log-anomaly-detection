@@ -1,9 +1,12 @@
-from fastapi import FastAPI
-from sqlalchemy import select, func
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import async_session_pool
+#from backend.database import async_session_pool
+from backend.database import SessionLocal
 from backend.db_models import Alert
+import backend.crud  as crud
+import backend.schemas as schemas
 
 app = FastAPI(
     title="SentinelIQ API"
@@ -18,14 +21,181 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#Database dependency
+def get_db():
+
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
+
+#Root
+
 @app.get("/")
-async def root():
+def root():
 
     return {
         "status": "running"
     }
 
+@app.get("/health")
+def health():
 
+    return {
+        "status": "healthy"
+    }
+
+#Alerts Paginated
+@app.get(
+    "/alerts",
+    response_model=list[schemas.AlertResponse]
+    )
+def get_alerts(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+    ):
+
+    return crud.get_alerts(
+        db=db,
+        skip=skip,
+        limit=limit
+    )
+
+#Recent Alerts
+@app.get(
+    "/alerts/recent",
+    response_model=list[schemas.AlertResponse]
+    )
+def recent_alerts(
+    db: Session = Depends(get_db)
+    ):
+
+    return crud.get_recent_alerts(db)
+
+#Service Distribution
+@app.get(
+    "/analytics/services",
+    response_model=list[schemas.ServiceDistribution]
+    )
+def service_distribution(
+    db: Session = Depends(get_db)
+    ):
+
+    return crud.get_service_distribution(db)
+
+#Alert by id
+@app.get(
+"/alerts/{alert_id}",
+response_model=schemas.AlertResponse
+)
+def get_alert(
+    alert_id: int,
+    db: Session = Depends(get_db)
+    ):
+
+    alert = crud.get_alert_by_id(
+        db,
+        alert_id
+    )
+
+    if alert is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Alert {alert_id} not found"
+        )
+
+    return alert
+
+
+#Dashboard Summary
+@app.get(
+"/dashboard/summary",
+response_model=schemas.DashboardSummary
+    )
+def dashboard_summary(
+    db: Session = Depends(get_db)
+    ):
+
+    return crud.get_dashboard_summary(db)
+
+@app.get(
+    "/window-metrics",
+    response_model=list[schemas.WindowMetricResponse]
+)
+def get_window_metrics_api(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+
+    return crud.get_window_metrics(
+        db=db,
+        skip=skip,
+        limit=limit
+    )
+
+
+@app.get(
+    "/window-metrics/service/{service}",
+    response_model=list[schemas.WindowMetricResponse]
+)
+def service_window_metrics(
+    service: str,
+    db: Session = Depends(get_db)
+):
+
+    return crud.get_window_metrics_by_service(
+        db,
+        service
+    )
+
+@app.get(
+    "/window-metrics/recent",
+    response_model=list[schemas.WindowMetricResponse]
+)
+def recent_window_metrics(
+    db: Session = Depends(get_db)
+):
+
+    return crud.get_recent_window_metrics(db)
+
+@app.get(
+    "/window-metrics/{metric_id}",
+    response_model=schemas.WindowMetricResponse
+)
+def get_window_metric(
+    metric_id: int,
+    db: Session = Depends(get_db)
+):
+
+    metric = crud.get_window_metric_by_id(
+        db,
+        metric_id
+    )
+
+    if metric is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Window metric not found"
+        )
+
+    return metric
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )
+
+"""
 @app.get("/alerts")
 async def get_alerts():
 
@@ -119,4 +289,4 @@ async def health():
     return {
         "status": "healthy"
     }
-    
+"""    

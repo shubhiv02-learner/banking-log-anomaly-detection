@@ -1,13 +1,137 @@
-def create_window_metric(
-    session,
-    data
+from sqlalchemy import func
+
+#from backend.db_models import as db_models
+from backend.db_models import Alert, WindowMetrics
+
+def get_alerts(
+        db,
+        skip: int = 0,
+        limit: int = 50
+    ):
+
+    return (
+        db.query(Alert)
+        .order_by(Alert.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+
+def get_recent_alerts(db, limit: int = 50):
+
+    return (
+    db.query(Alert)
+    .order_by(Alert.created_at.desc())
+    .limit(limit)
+    .all()
+)
+
+
+def get_dashboard_summary(db):
+
+
+    return {
+        "total_alerts":
+            db.query(Alert).count(),
+
+        "critical":
+            db.query(Alert)
+            .filter(Alert.priority == "Critical")
+            .count(),
+
+        "high":
+            db.query(Alert)
+            .filter(Alert.priority == "High")
+            .count(),
+
+        "medium":
+            db.query(Alert)
+            .filter(Alert.priority == "Medium")
+            .count(),
+         
+        "low":
+            db.query(Alert)
+            .filter(Alert.priority == "Low")
+            .count()
+}
+
+#Low remove later as Alert is not getting generated in this case
+def get_service_distribution(db):
+
+    rows = (
+            db.query(
+                Alert.service,
+                func.count(Alert.id)
+            )
+            .group_by(Alert.service)
+            .all()
+)
+
+    return [
+        {
+            "service": row[0],
+            "count": row[1]
+        }
+        for row in rows
+        ]
+
+def get_alert_by_id(db, alert_id: int):
+    return (
+    db.query(Alert)
+    .filter(Alert.id == alert_id)
+    .first()
+)
+
+def get_window_metrics(
+    db,
+    skip: int = 0,
+    limit: int = 100
 ):
-    metric = WindowMetrics(**data)
 
-    session.add(metric)
+    return (
+        db.query(WindowMetrics)
+        .order_by(WindowMetrics.window_start.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
-    session.commit()
+def get_recent_window_metrics(
+    db,
+    limit: int = 50
+):
 
-    session.refresh(metric)
+    return (
+        db.query(WindowMetrics)
+        .order_by(WindowMetrics.window_start.desc())
+        .limit(limit)
+        .all()
+    )
 
-    return metric
+def get_window_metrics_by_service(
+    db,
+    service: str,
+    limit: int = 100
+):
+
+    return (
+        db.query(WindowMetrics)
+        .filter(WindowMetrics.service == service)
+        .order_by(WindowMetrics.window_start.desc())
+        .limit(limit)
+        .all()
+    )
+
+def get_window_metric_by_id(
+    db,
+    metric_id: int
+):
+
+    return (
+        db.query(WindowMetrics)
+        .filter(WindowMetrics.id == metric_id)
+        .first()
+    )
+

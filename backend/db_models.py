@@ -4,6 +4,7 @@ from sqlalchemy import Integer
 from sqlalchemy import Float
 from sqlalchemy import String
 from sqlalchemy import DateTime
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 
@@ -13,19 +14,21 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True)
-
     window_metric_id = Column(Integer)
-
     service = Column(String)
-
     final_score = Column(Float)
-
     priority = Column(String)
-
-    created_at = Column(DateTime)
-
-    status = Column(String)   # Open, Acknowledged, Resolved
-
+    
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+        )
+ # Open, Acknowledged, Resolved
+    status = Column(
+        String,
+        default="OPEN"
+    )
 class WindowMetrics(Base):
 
     __tablename__ = "window_metrics"
@@ -41,6 +44,7 @@ class WindowMetrics(Base):
 
     latency_mean = Column(Float)
     latency_max = Column(Float)
+    latency_std = Column(Float)
 
     cpu_mean = Column(Float)
     cpu_max = Column(Float)
@@ -69,4 +73,8 @@ class WindowMetrics(Base):
 
     priority = Column(String)
 
-    created_at = Column(DateTime)
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+        )
