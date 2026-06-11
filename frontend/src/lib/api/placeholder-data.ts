@@ -19,6 +19,8 @@ const SERVICES = [
   "fraud-detection",
   "trading-engine",
   "notification-service",
+  "investment-engine",
+   "portfolio-service",
   "ledger-service",
 ] as const;
 
@@ -29,6 +31,8 @@ export const SERVICE_LABELS: Record<string, string> = {
   "trading-engine": "Trading Engine",
   "notification-service": "Notification Service",
   "ledger-service": "Ledger Service",
+  "investment-engine": "Investment Engine",
+  "portfolio-service": "Portfolio Service"
 };
 
 function scoreToPriority(score: number): Priority {
@@ -47,6 +51,8 @@ const FORCED_LATEST_SCORE: Record<string, number> = {
   "trading-engine": 0.52,
   "notification-service": 0.28,
   "ledger-service": 0.81,
+  "investment-engine": 0.65,
+  "portfolio-service": 0.79
 };
 
 const NOW = new Date("2026-06-10T12:00:00Z").getTime();
