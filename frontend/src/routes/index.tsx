@@ -38,9 +38,10 @@ function Dashboard() {
     queryKey: ["dashboard", "summary"],
     queryFn: api.dashboardSummary,
   });
+  
   const latestQ = useQuery({
     queryKey: ["window-metrics", "latest"],
-    queryFn: api.listWindowMetrics,
+    queryFn: api.recentWindowMetrics,
   });
   const recentAlertsQ = useQuery({
     queryKey: ["alerts", "recent"],
@@ -51,11 +52,26 @@ function Dashboard() {
   const recent = (recentAlertsQ.data ?? []).slice(0, 6);
   const summary = summaryQ.data;
 
-  const uniqueLatest = Array.from(
-    new Map(
-      latest.map(item => [item.service, item])
-      ).values()
-   );
+  //const uniqueLatest = Array.from(
+   // new Map(
+   //   latest.map(item => [item.service, item])
+    //  ).values()
+   //);
+  
+  const latestPerService = new Map<string, WindowMetric>();
+
+  latest.forEach(item => {
+    const existing = latestPerService.get(item.service);
+
+    if (
+        !existing ||
+          new Date(item.window_end) > new Date(existing.window_end)
+        ) {
+        latestPerService.set(item.service, item);
+          }
+      });
+
+  const uniqueLatest = Array.from(latestPerService.values());
 
   // Aggregate trend across services: align by index of each service's trend.
   // Derived from `latest` to avoid extra fan-out queries on the dashboard.
@@ -69,7 +85,27 @@ function Dashboard() {
             latest.reduce((acc, s) => acc + s.final_score, 0) / latest.length,
         }))
       : [];
+  //console.log("summary =", summary);
+  console.log("latest =", latest);
+  console.log("recent =", recent);
+  console.log("uniqueLatest chk =", uniqueLatest);
+  console.log(
+  latest
+    .filter(x => x.service === "auth-service")
+    .map(x => ({
+      id: x.id,
+      score: x.final_score,
+      priority: x.priority
+    }))
+);
 
+  const avgRiskScore =
+    latest.length > 0
+      ? latest.reduce(
+        (sum, metric) => sum + metric.final_score,
+        0
+      ) / latest.length
+    : 0;
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -77,29 +113,29 @@ function Dashboard() {
           label="Total Alerts"
           value={summary?.total_alerts ?? "—"}
           icon={AlertOctagon}
-          hint="Across all services"
+          hint="Across al services"
         />
         <KpiCard
           label="Critical Alerts"
-          value={summary?.critical_alerts ?? "—"}
+          value={summary?.critical ?? "—"}
           icon={AlertOctagon}
           accent="danger"
           hint="Requires immediate action"
         />
         <KpiCard
           label="Services Monitored"
-          value={summary?.services_monitored ?? "—"}
+          value={uniqueLatest.length ?? "—"}
           icon={ServerCog}
           hint="Reporting telemetry"
         />
         <KpiCard
           label="Average Risk Score"
-          value={summary?.avg_risk_score ? summary.avg_risk_score.toFixed(2): "0.00"}
+          value={avgRiskScore.toFixed(2)}
           icon={Gauge}
           accent={
-            summary && summary.avg_risk_score > 0.6
+           avgRiskScore > 0.6
               ? "danger"
-              : summary && summary.avg_risk_score > 0.4
+              : avgRiskScore > 0.5
                 ? "warning"
                 : "success"
           }

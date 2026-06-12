@@ -121,7 +121,7 @@ function AnalyticsPage() {
           data={slice}
           dataKey="cpu_mean"
           domain={[0, 1]}
-          format={(v) => `${(v * 100).toFixed(0)}%`}
+          format={(v) => `${(v ).toFixed(0)}%`}
           color="var(--color-chart-2)"
         />
         <TrendChart
@@ -129,7 +129,7 @@ function AnalyticsPage() {
           data={slice}
           dataKey="memory_mean"
           domain={[0, 1]}
-          format={(v) => `${(v * 100).toFixed(0)}%`}
+          format={(v) => `${(v ).toFixed(0)}%`}
           color="var(--color-chart-3)"
         />
         <TrendChart
@@ -160,7 +160,7 @@ function AnalyticsPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Stat label="latency_max" value={`${latest.latency_max.toFixed(0)}ms`} mono />
-            <Stat label="cpu_max" value={`${(latest.cpu_max * 100).toFixed(0)}%`} mono />
+            <Stat label="cpu_max" value={`${(latest.cpu_max ).toFixed(0)}%`} mono />
             <Stat label="queue_lag_max" value={latest.queue_lag_max.toFixed(0)} mono />
             <Stat label="ml_score" value={latest.ml_score.toFixed(3)} mono />
             <Stat label="statistical_score" value={latest.statistical_score.toFixed(3)} mono />

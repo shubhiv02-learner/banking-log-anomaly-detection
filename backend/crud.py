@@ -34,11 +34,13 @@ def get_dashboard_summary(db):
 
     return {
         "total_alerts":
-            db.query(Alert).count(),
+            db.query(Alert)
+             .filter(Alert.status == "OPEN")
+            .count(),
 
         "critical":
             db.query(Alert)
-            .filter(Alert.priority == "Critical")
+            .filter(Alert.priority == "Critical", Alert.status == "OPEN" )
             .count(),
 
         "high":
@@ -58,16 +60,15 @@ def get_dashboard_summary(db):
 }
 
 #Low remove later as Alert is not getting generated in this case
+#When Status is built than needs to be changed
 def get_service_distribution(db):
 
     rows = (
             db.query(
-                Alert.service,
-                func.count(Alert.id)
-            )
-            .group_by(Alert.service)
-            .all()
-)
+             Alert.service,
+            func.count(Alert.id)
+)           .filter(Alert.status == "OPEN").group_by(Alert.service).all()
+                )
 
     return [
         {
@@ -77,6 +78,8 @@ def get_service_distribution(db):
         for row in rows
         ]
 
+
+    
 def get_alert_by_id(db, alert_id: int):
     return (
     db.query(Alert)

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,12 +21,9 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
-import {
-  SERVICE_LABELS,
-  listAlerts,
-  listServices,
-} from "@/lib/api/placeholder-data";
-import type { AlertStatus, Priority } from "@/lib/api/types";
+import { api } from "@/lib/api/client";
+import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
+import type { Alert, AlertStatus, Priority, ServiceCount } from "@/lib/api/types";
 
 export const Route = createFileRoute("/alerts")({
   head: () => ({
@@ -45,12 +42,22 @@ const PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"];
 const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 function AlertsPage() {
-  const all = listAlerts();
-  const services = listServices();
+  const [all, setAll] = useState<Alert[]>([]);
+  const [services, setServices] = useState<ServiceCount[]>([]);
   const [q, setQ] = useState("");
   const [priority, setPriority] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [service, setService] = useState<string>("all");
+
+  useEffect(() => {
+    api.listAlerts()
+      .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
+      .catch((err) => console.error("Failed to fetch alerts:", err));
+
+    api.listServices()
+      .then((data) => setServices(Array.isArray(data) ? data : data?.data ?? []))
+      .catch((err) => console.error("Failed to fetch services:", err));
+  }, []);
 
   const filtered = useMemo(() => {
     return all.filter((a) => {
@@ -73,10 +80,10 @@ function AlertsPage() {
     p,
     n: all.filter((a) => a.priority === p).length,
   }));
-  console.log("services =", services);
 
   return (
     <div className="space-y-6">
+      {/* Priority summary cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {counts.map(({ p, n }) => (
           <Card key={p}>
@@ -93,6 +100,7 @@ function AlertsPage() {
         ))}
       </div>
 
+      {/* Filters */}
       <Card>
         <CardContent className="p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -102,7 +110,7 @@ function AlertsPage() {
               onChange={(e) => setQ(e.target.value)}
               className="h-9 w-full sm:w-64"
             />
-            <Select value={priority} onValueChange={setPriority}>
+            <Select value={priority} onValueChange={(val) => setPriority(val)}>
               <SelectTrigger className="h-9 w-36">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
@@ -115,7 +123,7 @@ function AlertsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(val) => setStatus(val)}>
               <SelectTrigger className="h-9 w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -128,15 +136,15 @@ function AlertsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={service} onValueChange={setService}>
+            <Select value={service} onValueChange={(val) => setService(val)}>
               <SelectTrigger className="h-9 w-48">
                 <SelectValue placeholder="Service" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All services</SelectItem>
                 {services.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {SERVICE_LABELS[s] ?? s}
+                  <SelectItem key={s.service} value={s.service}>
+                    {SERVICE_LABELS[s.service] ?? s.service} ({s.count})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -148,6 +156,7 @@ function AlertsPage() {
         </CardContent>
       </Card>
 
+      {/* Alerts table */}
       <Card>
         <CardContent className="p-0">
           <Table>

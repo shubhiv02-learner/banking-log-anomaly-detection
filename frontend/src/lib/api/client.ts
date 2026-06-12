@@ -14,10 +14,11 @@ async function http<T>(path: string): Promise<T> {
 
 export interface DashboardSummary {
   total_alerts: number;
-  critical_alerts: number;
-  services_monitored: number;
-  avg_risk_score: number;
-}
+  critical: number;
+  high: number;
+  medium: number;
+  low: number
+  }
 export interface ServiceCount {
   service: string;
   count: number;

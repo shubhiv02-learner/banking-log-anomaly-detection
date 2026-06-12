@@ -128,14 +128,14 @@ const TRENDS: Record<string, WindowMetric[]> = Object.fromEntries(
 
 const ALERTS: Alert[] = (() => {
   const rand = mulberry32(42);
-  const statuses: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
+  const statuses: AlertStatus[] = ["OPEN"] //, "ACKNOWLEDGED", "RESOLVED"];
   const items: Alert[] = [];
   let id = 1001;
   for (const service of SERVICES) {
     const trend = TRENDS[service];
     // Promote any window with high score into an alert.
     for (const w of trend) {
-      if (w.final_score >= 0.55) {
+      if (w.final_score >= 0.40) {
         items.push({
           id: id++,
           service,

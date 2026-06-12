@@ -1,0 +1,6 @@
+Folder PATH listing for volume Windows
+Volume serial number is 000001EA 9A99:0834
+C:\SHUBHI\BANKING-LOG-ANOMALY-DETECTION\FRONTEND\-A
+Invalid path - \SHUBHI\BANKING-LOG-ANOMALY-DETECTION\FRONTEND\-A
+No subfolders exist 
+
