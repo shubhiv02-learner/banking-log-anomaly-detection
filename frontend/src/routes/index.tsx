@@ -18,6 +18,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { api, serviceLabel } from "@/lib/api/client";
 import type { WindowMetric } from "@/lib/api/types";
+import { getServiceHealth } from "@/lib/service-health";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,6 +40,10 @@ function Dashboard() {
     queryFn: api.dashboardSummary,
   });
   
+  const alertsQ = useQuery({
+     queryKey: ["alerts"],
+     queryFn: api.listAlerts,
+      });
   const latestQ = useQuery({
     queryKey: ["window-metrics", "latest"],
     queryFn: api.recentWindowMetrics,
@@ -72,7 +77,7 @@ function Dashboard() {
       });
 
   const uniqueLatest = Array.from(latestPerService.values());
-
+  const allAlerts = alertsQ.data ?? [];
   // Aggregate trend across services: align by index of each service's trend.
   // Derived from `latest` to avoid extra fan-out queries on the dashboard.
   const aggregateBuckets: WindowMetric[] =
@@ -158,11 +163,10 @@ function Dashboard() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
   {uniqueLatest.map((w) => (
   	  <HealthTile
-      		key={w.service}
-      		service={serviceLabel(w.service)}
-      		priority={w.priority}
-      		score={w.final_score}
-    	  />
+        service={serviceLabel(w.service)}
+        priority={getServiceHealth(w.service,allAlerts,w.priority)}
+        score={w.final_score}
+/>
   	))}
       </div>
         </CardContent>
