@@ -1,7 +1,7 @@
 // Data contracts aligned with the future FastAPI backend.
 // snake_case matches Pydantic; scores are 0..1; dates are ISO 8601 strings.
 
-export type Priority = "Critical" | "High" | "Medium" | "Low";
+export type Priority = "Critical" | "High" | "Medium";
 
 export type AlertStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
 
@@ -33,4 +33,8 @@ export interface WindowMetric {
   final_score: number;
   prediction: number;
   priority: Priority;
+}
+export interface ServiceCount {
+  service: string;
+  count: number;
 }

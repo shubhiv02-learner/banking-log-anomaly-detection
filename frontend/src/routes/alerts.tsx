@@ -38,7 +38,7 @@ export const Route = createFileRoute("/alerts")({
   component: AlertsPage,
 });
 
-const PRIORITIES: Priority[] = ["Critical", "High", "Medium", "Low"];
+const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
 const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 function AlertsPage() {
@@ -96,10 +96,12 @@ useEffect(() => {
     });
   }, [all, priority, status, service, q]);
 
-  const counts = PRIORITIES.map((p) => ({
-    p,
-    n: all.filter((a) => a.priority === p).length,
-  }));
+  const counts = [
+  { p: "Critical", n: all.filter((a) => a.priority === "Critical").length },
+  { p: "High", n: all.filter((a) => a.priority === "High").length },
+  { p: "Medium", n: all.filter((a) => a.priority === "Medium").length },
+  { p: "Open", n: all.filter((a) => a.status === "OPEN").length }, // 👈 new card
+  ];
 
   return (
     <div className="space-y-6">
@@ -113,7 +115,11 @@ useEffect(() => {
               </p>
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-mono text-2xl font-semibold">{n}</span>
-                <PriorityBadge priority={p} />
+                {p === "Open" ? (
+                  <StatusPill status="OPEN" />   // 👈 use status pill
+                    ) : (
+                  <PriorityBadge priority={p as Priority} />
+                )}
               </div>
             </CardContent>
           </Card>
