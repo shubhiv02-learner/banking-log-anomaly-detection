@@ -80,6 +80,7 @@ function Dashboard() {
   const allAlerts = alertsQ.data ?? [];
   // Aggregate trend across services: align by index of each service's trend.
   // Derived from `latest` to avoid extra fan-out queries on the dashboard.
+/*
   const aggregateBuckets: WindowMetric[] =
     latest.length > 0
       ? latest.map((w, i) => ({
@@ -90,6 +91,29 @@ function Dashboard() {
             latest.reduce((acc, s) => acc + s.final_score, 0) / latest.length,
         }))
       : [];
+  */
+ // Group metrics by window_end
+const bucketsByWindow: Record<string, WindowMetric[]> = {};
+latest.forEach((w) => {
+  if (!bucketsByWindow[w.window_end]) {
+    bucketsByWindow[w.window_end] = [];
+  }
+  bucketsByWindow[w.window_end].push(w);
+});
+
+// Build aggregate buckets per window
+const aggregateBuckets: WindowMetric[] = Object.entries(bucketsByWindow).map(
+  ([window_end, metrics], i) => ({
+    ...metrics[0], // copy one metric’s shape
+    id: i,
+    service: "aggregate",
+    window_end,
+    final_score:
+      metrics.reduce((sum, m) => sum + m.final_score, 0) / metrics.length,
+  })
+);
+
+
   //console.log("summary =", summary);
   console.log("latest =", latest);
   console.log("recent =", recent);

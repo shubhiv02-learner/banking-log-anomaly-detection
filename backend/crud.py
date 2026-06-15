@@ -6,16 +6,18 @@ from backend.db_models import Alert, WindowMetrics
 def get_alerts(
         db,
         skip: int = 0,
-        limit: int = 50
+        limit: int = 10000 #ideally should be 50, since status not getting closed as of now
     ):
-
-    return (
+    
+    alerts = (
         db.query(Alert)
         .order_by(Alert.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+    print("Fetched alerts:", len(alerts))  # debug line
+    return alerts
 
 
 
@@ -24,7 +26,7 @@ def get_recent_alerts(db, limit: int = 50):
     return (
     db.query(Alert)
     .order_by(Alert.created_at.desc())
-    .limit(limit)
+    .limit(10000)
     .all()
 )
 
@@ -90,7 +92,7 @@ def get_alert_by_id(db, alert_id: int):
 def get_window_metrics(
     db,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 10000
 ):
 
     return (
@@ -103,7 +105,7 @@ def get_window_metrics(
 
 def get_recent_window_metrics(
     db,
-    limit: int = 50
+    limit: int = 5000
 ):
 
     return (
@@ -116,7 +118,7 @@ def get_recent_window_metrics(
 def get_window_metrics_by_service(
     db,
     service: str,
-    limit: int = 100
+    limit: int = 10000
 ):
 
     return (

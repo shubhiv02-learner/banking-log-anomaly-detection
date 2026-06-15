@@ -58,7 +58,27 @@ function AlertsPage() {
       .then((data) => setServices(Array.isArray(data) ? data : data?.data ?? []))
       .catch((err) => console.error("Failed to fetch services:", err));
   }, []);
+useEffect(() => {
+  console.log("alerts count", all.length);
 
+  console.log(
+    "critical count",
+    all.filter(a => a.priority === "Critical").length
+  );
+
+  console.log(
+    "high count",
+    all.filter(a => a.priority === "High").length
+  );
+
+  console.log(
+    "medium count",
+    all.filter(a => a.priority === "Medium").length
+  );
+  const openAlerts = all.filter(
+  a => a.status === "OPEN"
+).length;
+}, [all]);
   const filtered = useMemo(() => {
     return all.filter((a) => {
       if (priority !== "all" && a.priority !== priority) return false;
