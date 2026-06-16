@@ -15,8 +15,8 @@
 #save to PostgreSQL - window_metrics → increasing every window
 #                   alerts → increasing only when anomaly detected
 import numpy as np
-from kafka import KafkaConsumer
-import json
+#from kafka import KafkaConsumer
+#import json
 from numpy import rint
 import pandas as pd
 from datetime import datetime, timedelta, timezone
@@ -30,7 +30,8 @@ from config import WINDOW_SIZE_MINUTES
 
 from backend.db_services import (
     save_window_metric,
-    save_alert
+    save_alert,
+    save_ticket
 )
 # Initialize components
 metrics_engine = StreamMetrics()
@@ -39,17 +40,48 @@ ensemble = EnsembleEngine()
 service_buffers = defaultdict(list)
 
 
-# Set up Kafka consumer
-consumer = KafkaConsumer(
-    "banking_logs",
-    bootstrap_servers=["localhost:9092"],
-    value_deserializer=lambda m: json.loads(
-        m.decode("utf-8")
-    ),
-    auto_offset_reset="latest",
-    group_id="sentineliq-v1"
-)
-print("🚀 Consumer started, waiting for messages...")
+import json
+from confluent_kafka import Consumer, KafkaError, KafkaException
+
+# Configuration dictionary using standard dot properties
+conf = {
+    'bootstrap.servers': 'host.docker.internal:9092',
+    'group.id': 'sentineliq-final-group-v6',   # A completely unique group ID forces Kafka to read from scratch
+    'auto.offset.reset': 'earliest',           # Read from the very beginning of the topic
+    'enable.auto.commit': True
+}
+
+consumer = Consumer(conf)
+consumer.subscribe(['banking_logs'])
+
+print("🚀 Windows Consumer Connected! Polling for messages...")
+
+try:
+    while True:
+        # Check for messages every 1 second
+        msg = consumer.poll(timeout=1.0)
+        
+        if msg is None:
+            print("Checking partition offsets... No new data right now.")
+            continue
+            
+        if msg.error():
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                # Reached the current end of the stream
+                continue
+            else:
+                raise KafkaException(msg.error())
+        
+        # Output the structural data sent by your producer
+        data = json.loads(msg.value().decode('utf-8'))
+        print(f"🎯 Message Found! Offset: {msg.offset()} | Value: {data}")
+
+except KeyboardInterrupt:
+    print("\nStopping consumer gracefully...")
+finally:
+    consumer.close()
+
+"""
 current_time = datetime.now(timezone.utc)
 window_start = current_time 
 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)
@@ -58,6 +90,7 @@ try:
     for message in consumer:
         try:
             current_time = datetime.now(timezone.utc)
+            print(f"in loop Current time: {current_time}")
             if message is None:
                     print("No message received, waiting...")
                     continue
@@ -142,8 +175,18 @@ try:
                                     "priority":
                                         ensemble_result["priority"],
                                 }
-                        save_alert(alert_data)
-                
+                        alert = save_alert(alert_data)
+                        print("Alert saved to database")
+                        ticket_data = {
+                                    "alert_id": alert.id,
+                                    "ticket_id":f"INC-{datetime.now().strftime('%Y%m%d')}-{alert.id}",
+                                    "service":alert.service,
+                                    "priority":alert.priority,
+                                    "assignee":"SUPPORT"
+                                }
+                        print("Ticket data prepared")
+                        save_ticket(ticket_data)
+                        print("Ticket saved to database")
                 service_buffers.clear()
                 window_start = datetime.now(timezone.utc)
                 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)    
@@ -162,7 +205,6 @@ except Exception as e:
         
       
     
-         
-          
+        """
 
         

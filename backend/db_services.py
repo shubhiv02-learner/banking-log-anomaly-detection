@@ -1,5 +1,8 @@
 from backend.database import SessionLocal
-from backend.db_models import WindowMetrics, Alert
+from backend.db_models import WindowMetrics, Alert, Ticket
+import json
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 
 def save_window_metric(window_metric_data):
@@ -39,3 +42,44 @@ def save_alert(alert_data):
 
     finally:
         db.close()
+
+def save_ticket(ticket_data):
+
+    db = SessionLocal()
+
+    try:
+        ticket = Ticket(**ticket_data)
+
+        db.add(ticket)
+
+        db.commit()
+
+        db.refresh(ticket)
+
+        return ticket
+
+    finally:
+        db.close()
+        notify_n8n(ticket)
+
+
+def notify_n8n(incident):
+    payload = json.dumps({
+        "ticket_id": incident.ticket_id,
+        "service": incident.service,
+        "priority": incident.priority,
+        "status": incident.status
+    }).encode("utf-8")
+
+    request = Request(
+        "http://localhost:5678/webhook/critical-incident",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    try:
+        with urlopen(request, timeout=5) as response:
+            return response.read()
+    except (HTTPError, URLError):
+        return None

@@ -78,6 +78,18 @@ function Dashboard() {
 
   const uniqueLatest = Array.from(latestPerService.values());
   const allAlerts = alertsQ.data ?? [];
+/*  const serviceHealthIndex = useMemo(() => {
+    if (services.length === 0) return 100; // assume healthy if no services
+
+  const unhealthyServices = new Set(
+    all.filter((a) => a.priority === "Critical" && a.status === "OPEN")
+       .map((a) => a.service)
+  );
+
+  const healthyCount = services.length - unhealthyServices.size;
+  return Math.round((healthyCount / services.length) * 100);
+}, [all, services]);
+*/
   // Aggregate trend across services: align by index of each service's trend.
   // Derived from `latest` to avoid extra fan-out queries on the dashboard.
 /*

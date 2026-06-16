@@ -14,6 +14,18 @@ export interface Alert {
   created_at: string;
 }
 
+export interface Ticket {
+  id: number;
+  alert_id: number;
+  ticket_id: string
+  service: string;
+  priority: Priority;
+  assignee: string;
+  status: AlertStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WindowMetric {
   id: number;
   service: string;

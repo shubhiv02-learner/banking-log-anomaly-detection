@@ -19,6 +19,7 @@ const navItems = [
   { title: "Executive Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Alerts Center", url: "/alerts", icon: AlertTriangle },
   { title: "Service Analytics", url: "/analytics", icon: Activity },
+  { title: "Incidents Center", url: "/incidents", icon: Activity }
 ];
 
 export function AppSidebar() {

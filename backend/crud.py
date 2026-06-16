@@ -1,7 +1,8 @@
 from sqlalchemy import func
 
 #from backend.db_models import as db_models
-from backend.db_models import Alert, WindowMetrics
+from backend.db_models import Alert, WindowMetrics, Ticket
+
 
 def get_alerts(
         db,
@@ -140,3 +141,19 @@ def get_window_metric_by_id(
         .first()
     )
 
+##############INCIDENTS#############
+def get_incidents(
+        db,
+        skip: int = 0,
+        limit: int = 10000 #ideally should be 50, since status not getting closed as of now
+    ):
+    
+    incidents = (
+        db.query(Ticket)
+        .order_by(Ticket.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    print("Fetched incidents:", len(incidents))  # debug line
+    return incidents

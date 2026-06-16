@@ -36,10 +36,9 @@ export const SERVICE_LABELS: Record<string, string> = {
 };
 
 function scoreToPriority(score: number): Priority {
-  if (score >= 0.85) return "Critical";
-  if (score >= 0.65) return "High";
-  if (score >= 0.4) return "Medium";
-  return "Low";
+  if (score >= 0.9) return "Critical";
+  if (score >= 0.75) return "High";
+  return "Medium";
 }
 
 // Force a specific health distribution for the demo, so the System Health

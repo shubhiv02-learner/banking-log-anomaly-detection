@@ -68,3 +68,17 @@ class WindowMetricResponse(BaseModel):
 
     class Config:
         from_attributes = True  
+
+class TicketResponse(BaseModel):
+
+    id: int
+    alert_id: int
+    ticket_id: str
+    assignee : str
+    priority: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

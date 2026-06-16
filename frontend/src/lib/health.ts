@@ -2,8 +2,22 @@ import type { Priority } from "./api/types";
 
 export type HealthStatus = "Healthy" | "Medium" | "High" | "Critical";
 
+
+import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
+const STATIC_SERVICES = Object.keys(SERVICE_LABELS);
+export type ServiceHealth = {
+  service: string;
+  health: HealthStatus;
+};
+
+
 export function priorityToHealth(p: Priority): HealthStatus {
-  if (p === "Low") return "Healthy";
+  // If it is NOT one of the three severity levels, it is Healthy
+  if (p !== 'Critical' && p !== 'High' && p !== 'Medium') {
+    return 'Healthy';
+  }
+  
+  // Otherwise, it returns the severity status itself
   return p;
 }
 

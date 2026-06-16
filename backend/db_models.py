@@ -78,3 +78,30 @@ class WindowMetrics(Base):
         server_default=func.now(),
         nullable=False
         )
+
+class Ticket(Base):
+
+    __tablename__ = "incidents"
+
+    id = Column(Integer, primary_key=True)
+    alert_id = Column(Integer)
+    ticket_id = Column(String)
+    service = Column(String)
+    priority = Column(String)
+    assignee = Column(String)
+    
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+        )
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+        )
+ # Open, Acknowledged, Resolved
+    status = Column(
+        String,
+        default="OPEN"
+    )

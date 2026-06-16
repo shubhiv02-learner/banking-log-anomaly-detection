@@ -195,98 +195,21 @@ if __name__ == "__main__":
         reload=True
     )
 
-"""
-@app.get("/alerts")
-async def get_alerts():
-
-    async with async_session_pool() as session:
-
-        result = await session.execute(
-            select(Alert)
-        )
-
-        alerts = result.scalars().all()
-
-        return alerts
-    
-@app.get("/dashboard/summary")
-async def dashboard_summary():
-
-    async with async_session_pool() as session:
-
-        total_alerts = await session.scalar(
-            select(func.count(Alert.id))
-        )
-
-        critical = await session.scalar(
-            select(func.count(Alert.id))
-            .where(Alert.priority == "Critical")
-        )
-
-        high = await session.scalar(
-            select(func.count(Alert.id))
-            .where(Alert.priority == "High")
-        )
-
-        medium = await session.scalar(
-            select(func.count(Alert.id))
-            .where(Alert.priority == "Medium")
-        )
-
-        low = await session.scalar(
-            select(func.count(Alert.id))
-            .where(Alert.priority == "Low")
-        )
-
-        return {
-            "total_alerts": total_alerts,
-            "critical": critical,
-            "high": high,
-            "medium": medium,
-            "low": low
-        }
-
-@app.get("/alerts/recent")
-async def recent_alerts():
-
-    async with async_session_pool() as session:
-
-        result = await session.execute(
-            select(Alert)
-            .order_by(Alert.timestamp.desc())
-            .limit(50)
-        )
-
-        alerts = result.scalars().all()
-
-        return alerts
-@app.get("/analytics/services")
-async def service_distribution():
-
-    async with async_session_pool() as session:
-
-        result = await session.execute(
-            select(
-                Alert.service,
-                func.count(Alert.id)
-            )
-            .group_by(Alert.service)
-        )
-
-        rows = result.all()
-
-        return [
-            {
-                "service": row[0],
-                "count": row[1]
-            }
-            for row in rows
-        ]
-
-@app.get("/health")
-async def health():
-
-    return {
-        "status": "healthy"
-    }
-"""    
+##################INCIDENTS END POINTS#################
+#Alerts Paginated
+@app.get(
+    "/tickets",
+    response_model=list[schemas.TicketResponse]
+    )
+def get_incidents(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+    ):
+    incidents = crud.get_incidents(
+                    db=db,
+                    skip=skip,
+                    limit=limit
+                 )
+    print (incidents.__len__ )
+    return incidents

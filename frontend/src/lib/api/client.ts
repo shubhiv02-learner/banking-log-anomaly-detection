@@ -1,4 +1,4 @@
-import type { Alert, WindowMetric } from "./types";
+import type { Alert, WindowMetric,Ticket } from "./types";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
@@ -16,8 +16,13 @@ export interface DashboardSummary {
   total_alerts: number;
   critical: number;
   high: number;
-  medium: number;
-  low: number
+  medium: number
+  }
+export interface IncidentsSummary {
+  total_incidents: number;
+  critical: number;
+  high: number;
+  medium: number
   }
 export interface ServiceCount {
   service: string;
@@ -32,6 +37,7 @@ export const api = {
   listServices: () => http<ServiceCount[]>("/analytics/services"),
   listWindowMetrics: () => http<WindowMetric[]>("/window-metrics"),
   recentWindowMetrics: () => http<WindowMetric[]>("/window-metrics/recent"),
+  listTickets: () => http<Ticket[]>("/tickets"),
   serviceTrend: (service: string) =>
     http<WindowMetric[]>(`/window-metrics/service/${encodeURIComponent(service)}`),
   getWindowMetric: (id: number) => http<WindowMetric>(`/window-metrics/${id}`),
