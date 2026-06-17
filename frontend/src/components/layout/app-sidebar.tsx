@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, AlertTriangle, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { Activity, AlarmCheck, AlarmClock, AlertOctagon, AlertTriangle, Antenna, Eye, EyeClosed, LayoutDashboard, LucideHammer, ShieldCheck } from "lucide-react";
 
 import {
   Sidebar,
@@ -19,7 +19,7 @@ const navItems = [
   { title: "Executive Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Alerts Center", url: "/alerts", icon: AlertTriangle },
   { title: "Service Analytics", url: "/analytics", icon: Activity },
-  { title: "Incidents Center", url: "/incidents", icon: Activity }
+  { title: "Incidents Center", url: "/incidents", icon: Eye }
 ];
 
 export function AppSidebar() {

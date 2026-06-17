@@ -25,7 +25,7 @@ import {
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { api } from "@/lib/api/client";
-//import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
+import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 
 import type { Ticket, AlertStatus, Priority } from "@/lib/api/types";
 
@@ -79,7 +79,7 @@ function IncidentsPage() {
       const openIncidents = all.filter(
         a => a.status === "OPEN"
       ).length;
-      }, [all]);
+            }, [all]);
   const filtered = useMemo(() => {
     return all.filter((a) => {
       if (priority !== "all" && a.priority !== priority) return false;
@@ -173,6 +173,7 @@ function IncidentsPage() {
                 <TableHead className="w-20">ID</TableHead>
                 <TableHead>Alert Id</TableHead>
                 <TableHead>Ticket Id</TableHead>
+                <TableHead>Service</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
@@ -186,13 +187,13 @@ function IncidentsPage() {
                   <TableCell className="font-mono text-xs">
                     {a.alert_id}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="text-sm">
                     {a.ticket_id}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {a.service}
+                  <TableCell className="text-sm">
+                    {SERVICE_LABELS[a.service] ?? a.service}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="text-sm">
                     {a.assignee}
                   </TableCell>
                   <TableCell>

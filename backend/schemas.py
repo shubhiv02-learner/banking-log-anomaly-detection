@@ -74,6 +74,7 @@ class TicketResponse(BaseModel):
     id: int
     alert_id: int
     ticket_id: str
+    service:str
     assignee : str
     priority: str
     status: str
