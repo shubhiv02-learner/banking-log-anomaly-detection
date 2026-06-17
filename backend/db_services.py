@@ -3,6 +3,8 @@ from backend.db_models import WindowMetrics, Alert, Ticket
 import json
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from datetime import datetime
+
 
 
 def save_window_metric(window_metric_data):
@@ -60,16 +62,11 @@ def save_ticket(ticket_data):
 
     finally:
         db.close()
-        notify_n8n(ticket)
+        notified =  notify_n8n(ticket)
+        if notified is not None:
+            update_ticket_Notified(ticket.ticket_id)
 
 
-import json
-import logging
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
-
-# Initialize your logger
-logger = logging.getLogger(__name__)
 
 
 def notify_n8n(incident):
@@ -114,3 +111,29 @@ def notify_n8n(incident):
     except Exception as ex:
         print(f"Failed to notify n8n: {ex}")
         return None
+    
+    return None
+
+def update_ticket_Notified(tick_id):
+
+    db = SessionLocal()
+
+    try:
+        #ticket = Ticket(**ticket_data)
+        # Update ticket in the database based on ticket_id
+        existing_record = db.query(Ticket).filter_by(ticket_id=tick_id).first()
+        if existing_record:
+            existing_record.notification_sent = True
+            existing_record.notification_time = datetime.utcnow()
+        
+            # Remember to commit the changes
+    
+            db.commit()
+
+            #db.refresh()
+
+        return 
+
+    finally:
+        db.close()
+

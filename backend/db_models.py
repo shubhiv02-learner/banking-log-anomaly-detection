@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column
+from sqlalchemy import Column, Boolean
 from sqlalchemy import Integer
 from sqlalchemy import Float
 from sqlalchemy import String
@@ -89,7 +89,8 @@ class Ticket(Base):
     service = Column(String)
     priority = Column(String)
     assignee = Column(String)
-    
+    notification_sent = Column(Boolean, default =False)
+    notification_time = Column(DateTime, server_default=func.now())
     created_at = Column(
         DateTime,
         server_default=func.now(),
