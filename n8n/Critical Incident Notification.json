@@ -1,0 +1,117 @@
+{
+  "name": "Critical Incident Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "critical-incident",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -880,
+        -160
+      ],
+      "id": "740a9a2c-425d-40a8-b25c-692eebe5c436",
+      "name": "Webhook",
+      "webhookId": "a282da43-2f9a-48af-ab77-13cb44ae14d3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6e839466-c61e-4801-b353-621e60c29423",
+              "leftValue": "={{ $json.body.priority }}",
+              "rightValue": "Critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -672,
+        -160
+      ],
+      "id": "237c56c0-83b0-4183-b49e-a4cdeca8f40f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "fromEmail": "shubhiv02@gmail.com",
+        "toEmail": "shubhiv02@outlook.com",
+        "subject": "=Alert: SentinelIQ Incident  {{ $json.body.priority }} service {{ $json.body.service }} ticket {{ $json.body.ticket_id }}",
+        "html": "=<h2>Critical Incident Detected</h2>\n\n<p><b>Ticket ID:</b>{{ $json.body.ticket_id }} </p>\n\n<p><b>Service:</b> {{ $json.body.service }}</p>\n\n<p><b>Priority:</b>{{ $json.body.priority }} </p>\n\n<p><b>Status:</b>{{ $json.body.status }} </p>\n\n<p>Please review immediately.</p>\n\n<p>Request you to review and get back as soon as possible.</p>\n<p>Thanks</p> \n<p>SUPPORT - SentinelIQ\n</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -224
+      ],
+      "id": "9e1d8494-512a-4976-80e8-88ed8b6a9321",
+      "name": "Send an Email",
+      "webhookId": "26f50412-2e37-4900-823f-d476a49ca0d4",
+      "credentials": {
+        "smtp": {
+          "id": "qQRTq8wILnrPg1gT",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ca2b453b-915d-4b46-9cca-d736a4c04ad6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a397732abbb9c10c909b9863e82e266fe9a36daeed22c8b81ed22c5d789ff3e7"
+  },
+  "nodeGroups": [],
+  "id": "JPOuC48rlKnWiDzc",
+  "tags": []
+}
