@@ -22,34 +22,41 @@ conf = {
 
 producer = Producer(conf)
 
-#payload = {"status": "active", "message": "Guaranteed Data Delivery"}
-
 try:
     print("🚀 Attempting connection to localhost:9092...")
     
     BASE_DIR = Path(__file__).resolve().parent.parent
 
-    csv_path = BASE_DIR / "data" / "banking_logs.csv"
+    file_path = BASE_DIR / "data" / "banking_logs.csv"
     #csv_path = BASE_DIR / "data/processed" / "banking_logs_processed.csv"
-    df = pd.read_csv(csv_path)
-    #logs = raw_data.rename(columns=COLUMN_MAPPING)
-    # 3. Create a clean working DataFrame containing ONLY the columns you care about
-    # .filter() avoids crashes if the CSV has extra, unexpected metadata columns
-    #available_columns = [col for col in COLUMN_MAPPING.values() if col in raw_df.columns]
-    #logs = raw_df[available_columns].copy()
+    
+    def batch_then_stream(file_path):
+        # --- Batch mode: process whole file once ---
+        df = pd.read_csv(file_path)   # assumes CSV with consistent columns
+        for _, row in df.iterrows():
+            record = row.to_dict()
+            producer.produce("banking_logs", json.dumps(record).encode("utf-8"), callback=delivery_report)
+            producer.poll(0)
+        producer.flush()
+        print("✅ Batch mode finished. Switching to streaming mode...")
 
-    print(df.head())
+        # --- Streaming mode: tail new lines until user exits ---
+        with open(file_path, "r") as f:
+            f.seek(0, 2)  # move to end of file
+            while True:
+                line = f.readline()
+                if not line:
+                    time.sleep(1)
+                    continue
+                fields = line.strip().split(",")
+                record = {"status": fields[0], "message": fields[1]}
+                producer.produce("banking_logs", json.dumps(record).encode("utf-8"), callback=delivery_report)
+                print("live record processed   ")
+                producer.poll(0)
 
-    for _, row in df.iterrows():
-        record = row.to_dict()
-        producer.produce(
-            topic="banking_logs",
-            value=json.dumps(record).encode("utf-8")
-        )
-        producer.poll(0)
+    # Run hybrid mode
+    batch_then_stream(file_path)
 
-    producer.flush()
-    time.sleep(2)
 except Exception as e:
     print(f"❌ System Level Connection Error: {e}")
 

@@ -63,23 +63,54 @@ def save_ticket(ticket_data):
         notify_n8n(ticket)
 
 
-def notify_n8n(incident):
-    payload = json.dumps({
-        "ticket_id": incident.ticket_id,
-        "service": incident.service,
-        "priority": incident.priority,
-        "status": incident.status
-    }).encode("utf-8")
+import json
+import logging
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
+# Initialize your logger
+logger = logging.getLogger(__name__)
+
+
+def notify_n8n(incident):
+    payload = json.dumps(
+        {
+            "ticket_id": incident.ticket_id,
+            "service": incident.service,
+            "priority": incident.priority,
+            "status": incident.status,
+        }
+    ).encode("utf-8")
+
+    # Fixed the missing comma syntax error. 
+    # Removed timeout from Request since it belongs in urlopen.
     request = Request(
         "http://localhost:5678/webhook/critical-incident",
         data=payload,
         headers={"Content-Type": "application/json"},
-        method="POST"
+        method="POST",
     )
 
+    print(f"In notify n8n {request}")
+
     try:
+        # Timeout is strictly enforced here during connection/read (5 seconds)
         with urlopen(request, timeout=5) as response:
             return response.read()
-    except (HTTPError, URLError):
+
+    # Specific catch for HTTP errors (e.g., 404, 500)
+    except HTTPError as e:
+        print(
+            f"Failed to notify n8n: HTTP Error {e.code} - {e.reason}"
+        )
+        return None
+
+    # Specific catch for network/URL issues
+    except URLError as e:
+        print(f"Failed to notify n8n: URL Error - {e.reason}")
+        return None
+
+    # Catch-all for any other unexpected exceptions (including timeouts)
+    except Exception as ex:
+        print(f"Failed to notify n8n: {ex}")
         return None

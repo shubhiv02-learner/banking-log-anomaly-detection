@@ -15,12 +15,12 @@
 #save to PostgreSQL - window_metrics → increasing every window
 #                   alerts → increasing only when anomaly detected
 import numpy as np
-#from kafka import KafkaConsumer
-#import json
-from numpy import rint
+from kafka import KafkaConsumer
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
+import json
+#from confluent_kafka import Consumer, KafkaError, KafkaException - Not working with Controller
 
 from src.stream_metrics import StreamMetrics
 from src.feature_engineering import create_window_features
@@ -40,48 +40,18 @@ ensemble = EnsembleEngine()
 service_buffers = defaultdict(list)
 
 
-import json
-from confluent_kafka import Consumer, KafkaError, KafkaException
 
 # Configuration dictionary using standard dot properties
-conf = {
-    'bootstrap.servers': 'host.docker.internal:9092',
-    'group.id': 'sentineliq-final-group-v6',   # A completely unique group ID forces Kafka to read from scratch
-    'auto.offset.reset': 'earliest',           # Read from the very beginning of the topic
-    'enable.auto.commit': True
-}
-
-consumer = Consumer(conf)
-consumer.subscribe(['banking_logs'])
+consumer = KafkaConsumer(
+    'banking_logs',
+    bootstrap_servers=['host.docker.internal:9092'],
+    auto_offset_reset='earliest',
+    enable_auto_commit=False,
+    group_id=None # disables group tracking
+)
 
 print("🚀 Windows Consumer Connected! Polling for messages...")
 
-try:
-    while True:
-        # Check for messages every 1 second
-        msg = consumer.poll(timeout=1.0)
-        
-        if msg is None:
-            print("Checking partition offsets... No new data right now.")
-            continue
-            
-        if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                # Reached the current end of the stream
-                continue
-            else:
-                raise KafkaException(msg.error())
-        
-        # Output the structural data sent by your producer
-        data = json.loads(msg.value().decode('utf-8'))
-        print(f"🎯 Message Found! Offset: {msg.offset()} | Value: {data}")
-
-except KeyboardInterrupt:
-    print("\nStopping consumer gracefully...")
-finally:
-    consumer.close()
-
-"""
 current_time = datetime.now(timezone.utc)
 window_start = current_time 
 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)
@@ -90,16 +60,26 @@ try:
     for message in consumer:
         try:
             current_time = datetime.now(timezone.utc)
-            print(f"in loop Current time: {current_time}")
+            #print(f"in loop Curr update ent time: {current_time}")
             if message is None:
                     print("No message received, waiting...")
                     continue
-            record = message.value
-            record["timestamp"] = (pd.to_datetime(record["timestamp"]))
+            try:
+                raw_value = message.value.decode('utf-8')
+
+                #print("got raw value of msg")
+                record = json.loads(raw_value)
+                #print(f"Message received   {record}")
+                record["timestamp"] = (pd.to_datetime(record["timestamp"]))
+            except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
+                    print(f"Error processing message: {e}, continue with next message")
+                    continue
+            #print("Message converted to datetime")
             record = metrics_engine.update(record)
+            #print("Message metrics processed .......")
             service = record["service"]
             service_buffers[record["service"]].append(record)
-            
+            #print(f"Message processed .......{current_time}....end: {window_end}")
             # Calculate EWMA/CUSUM/Persistence/IP  
             if current_time > window_end:
                 print("⏰ 5-minute window complete, processing data...")
@@ -124,7 +104,7 @@ try:
                             "cusum": window_df.iloc[0]["cusum_max"],
                             "persistence":window_df.iloc[0]["persistence_score_mean"],
                             "incident_probability":window_df.iloc[0]["incident_probability_mean"]}
-                    #print(f"Ensemble input: if_score: {ensemble_input['if_score']} ocsvm_score: {ensemble_input['ocsvm_score']}") # Debug: print ensemble input
+                    print(f"Ensemble input: if_score: {ensemble_input['if_score']} ocsvm_score: {ensemble_input['ocsvm_score']}") # Debug: print ensemble input
                     ensemble_result = ensemble.predict(ensemble_input) #Final ensemble score + priority
                     print(f"In consumer Ensemble result: {ensemble_result}")
                     print(f"In consumer window_df.columns before renameing : {window_df.columns}")
@@ -205,6 +185,4 @@ except Exception as e:
         
       
     
-        """
-
-        
+       
