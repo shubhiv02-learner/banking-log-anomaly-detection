@@ -1,6 +1,21 @@
+// src/routes/analytics.tsx
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  LineChart, 
+  Line, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend,
+  Label
+} from "recharts";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { api, serviceLabel } from "@/lib/api/client";
 
@@ -21,8 +35,7 @@ export const Route = createFileRoute("/analytics")({
       { title: "Service Analytics — SentinelIQ" },
       {
         name: "description",
-        content:
-          "Per-service trends: latency, CPU, memory, queue lag, anomaly score.",
+        content: "Complete 3-tier multi-variable diagnostics engine.",
       },
     ],
   }),
@@ -30,21 +43,21 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
-  
   const servicesQ = useQuery({
-      queryKey: ["services"],
-      queryFn: api.listServices,
-      });
+    queryKey: ["services"],
+    queryFn: api.listServices,
+  });
 
   const services = servicesQ.data ?? [];
   const [service, setService] = useState<string>("");
   const [range, setRange] = useState<"1h" | "24h" | "7d">("24h");
 
- useEffect(() => {
-  if (!service && services.length) {
-    setService(services[0].service);
-  }
-}, [services, service]);
+  useEffect(() => {
+    if (!service && services.length) {
+      setService(services[0].service);
+    }
+  }, [services, service]);
+
   const trendQ = useQuery({
     queryKey: ["window-metrics", "service", service],
     queryFn: () => api.serviceTrend(service),
@@ -54,13 +67,20 @@ function AnalyticsPage() {
   const full = trendQ.data ?? [];
   const slice = range === "1h" ? full.slice(-12) : full;
   const latest = full[full.length - 1];
-  console.log("services =", services);
-  console.log("first service =", services[0]);
-  console.log("servicesQ", servicesQ);
-  console.log("services[0] =", services[0]);
-  console.log("typeof services[0] =", typeof services[0]);
+  console.log(slice);
+  const formatXAxis = (tickItem: string) => {
+    if (!tickItem) return "";
+    try {
+      const d = new Date(tickItem);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return tickItem;
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* GLOBAL CONTROLS HEADER CARD */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3 p-3">
           <Select value={service} onValueChange={setService}>
@@ -69,13 +89,10 @@ function AnalyticsPage() {
             </SelectTrigger>
             <SelectContent>
               {services.map((s) => (
-                <SelectItem
-                  key={s.service}
-                      value={s.service}
-                  >
+                <SelectItem key={s.service} value={s.service}>
                   {serviceLabel(s.service)}
                 </SelectItem>
-                ))}
+              ))}
             </SelectContent>
           </Select>
           <Tabs value={range} onValueChange={(v) => setRange(v as typeof range)}>
@@ -88,9 +105,9 @@ function AnalyticsPage() {
 
           {latest && (
             <div className="ml-auto flex flex-wrap items-center gap-4 text-xs">
-              <Stat label="Latest Score" value={latest.final_score.toFixed(3)} mono />
-              <Stat label="Errors" value={latest.error_count} mono />
-              <Stat label="Records" value={latest.record_count.toLocaleString()} mono />
+              <Stat label="Prediction Status" value={`State [${latest.prediction}]`} mono />
+              <Stat label="Total Records" value={latest.record_count.toLocaleString()} mono />
+              <Stat label="Error Count" value={latest.error_count} mono />
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Priority</span>
                 <PriorityBadge priority={latest.priority} />
@@ -108,66 +125,178 @@ function AnalyticsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <TrendChart
-          title="Latency Trend"
-          data={slice}
-          dataKey="latency_mean"
-          format={(v) => `${v.toFixed(0)}ms`}
-          color="var(--color-chart-1)"
-        />
-        <TrendChart
-          title="CPU Utilization Trend"
-          data={slice}
-          dataKey="cpu_mean"
-          domain={[0, 1]}
-          format={(v) => `${(v ).toFixed(0)}%`}
-          color="var(--color-chart-2)"
-        />
-        <TrendChart
-          title="Memory Utilization Trend"
-          data={slice}
-          dataKey="memory_mean"
-          domain={[0, 1]}
-          format={(v) => `${(v ).toFixed(0)}%`}
-          color="var(--color-chart-3)"
-        />
-        <TrendChart
-          title="Queue Lag Trend"
-          data={slice}
-          dataKey="queue_lag_mean"
-          format={(v) => `${v.toFixed(0)}`}
-          color="var(--color-chart-4)"
-        />
-        <div className="xl:col-span-2">
-          <TrendChart
-            title="Anomaly Score Trend"
-            data={slice}
-            dataKey="final_score"
-            domain={[0, 1]}
-            format={(v) => v.toFixed(2)}
-            color="var(--color-chart-5)"
-          />
-        </div>
-      </div>
-
-      {latest && (
+      {/* THREE TIER AUDITED DASHBOARD LAYOUT */}
+      <div className="space-y-6">
+        
+        {/* ======================================================================= */}
+        {/* CHART 1: INFRASTRUCTURE CORE HARDWARE LAYER                             */}
+        {/* ======================================================================= */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Current Window — {serviceLabel(service)}
+            <CardTitle className="text-base font-semibold tracking-tight">
+              Unified Resource Footprint Overlays
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat label="latency_max" value={`${latest.latency_max.toFixed(0)}ms`} mono />
-            <Stat label="cpu_max" value={`${(latest.cpu_max ).toFixed(0)}%`} mono />
-            <Stat label="queue_lag_max" value={latest.queue_lag_max.toFixed(0)} mono />
-            <Stat label="ml_score" value={latest.ml_score.toFixed(3)} mono />
-            <Stat label="statistical_score" value={latest.statistical_score.toFixed(3)} mono />
-            <Stat label="prediction" value={latest.prediction} mono />
+          <CardContent className="pt-4">
+            <div className="h-[320px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={slice} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
+                  
+                  <YAxis yAxisId="left" orientation="left" className="text-[10px] fill-muted-foreground">
+                    <Label value="Latency / EWMA (ms)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: "middle", fontSize: "10px", fill: "var(--muted-foreground)" }} />
+                  </YAxis>
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} className="text-[10px] fill-muted-foreground" unit="%" />
+                  
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
+                    labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
+                    itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                  
+                  <Line yAxisId="left" type="monotone" dataKey="latency_mean" name="Latency (Mean)" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
+                  <Line yAxisId="left" type="monotone" dataKey="ewma" name="EWMA Smoothed Latency" stroke="#f97316" strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls />
+                  <Line yAxisId="left" type="monotone" dataKey="queue_lag_mean" name="Queue Lag" stroke="#eab308" strokeWidth={1.5} dot={false} strokeDasharray="2 2" connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="cpu_mean" name="CPU Utilization" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="memory_mean" name="Memory Utilization" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* ======================================================================= */}
+        {/* CHART 2: UN-BOUNDED MATHEMATICAL ACCUMULATORS                            */}
+        {/* ======================================================================= */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold tracking-tight">
+              Raw Mathematical Indicators (CUSUM & Persistence)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={slice} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
+                  <YAxis className="text-[10px] fill-muted-foreground" tickFormatter={(v) => Number(v).toLocaleString()} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
+                    labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
+                    itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+
+                  <Line type="monotone" dataKey="cusum" name="CUSUM Raw Accumulator" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="persistence_score" name="Persistence Weight Index" stroke="#eab308" strokeWidth={2} dot={false} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ======================================================================= */}
+        {/* CHART 3: BOUNDED PROBABILITIES & COMPOSITE VECTORS (0.0 - 1.0)          */}
+        {/* ======================================================================= */}
+          {/* CHART 3: PROBABILITIES & COMPOSITE VECTORS */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold tracking-tight">
+              Statistical Threat Models & Composite Vectors
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="h-[320px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                {/* 🛠️ CHANGED WRAPPER FROM AreaChart TO LineChart FOR BALANCED ELEMENT SUPPORT */}
+                <LineChart 
+                  data={slice.map((row) => {
+                    const parsedStatistical = parseFloat(row.statistical_score ?? row.statisticalScore ?? 0);
+                    const parsedProbability = parseFloat(row.incident_probability ?? row.incidentProbability ?? 0);
+                    const parsedML = parseFloat(row.ml_score ?? row.mlScore ?? 0);
+                    const parsedFinal = parseFloat(row.final_score ?? row.finalScore ?? 0);
+
+                    return {
+                      ...row,
+                      display_statistical: isNaN(parsedStatistical) ? 0 : parsedStatistical,
+                      display_probability: isNaN(parsedProbability) ? 0 : parsedProbability,
+                      display_ml: isNaN(parsedML) ? 0 : parsedML,
+                      display_final: isNaN(parsedFinal) ? 0 : parsedFinal
+                    };
+                  })} 
+                  margin={{ top: 10, right: 15, left: -10, bottom: 5 }}
+                >
+                  <defs>
+                    <linearGradient id="finalScoreGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
+                  <YAxis domain={[0.0, 1.0]} className="text-[10px] fill-muted-foreground" tickFormatter={(v) => Number(v).toFixed(1)} />
+                  
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
+                    labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
+                    itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+
+                  {/* 🍇 Background Layer: Composite Area Shading */}
+                  <Area 
+                    type="monotone" 
+                    dataKey="display_final" 
+                    name="Composite Threat Vector (Final Weight)" 
+                    stroke="#a855f7" 
+                    strokeWidth={3} 
+                    fillOpacity={1} 
+                    fill="url(#finalScoreGrad)" 
+                    connectNulls 
+                  />
+
+                  {/* 🔷 Foreground Layer: Crisp Statistical Line */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="display_statistical" 
+                    name="Statistical Score" 
+                    stroke="#0ea5e9" 
+                    strokeWidth={2.5} 
+                    dot={false} 
+                    connectNulls 
+                  />
+
+                  {/* 🔴 Foreground Layer: Incident Probability Line */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="display_probability" 
+                    name="Incident Probability" 
+                    stroke="#f43f5e" 
+                    strokeWidth={2.5} 
+                    dot={false} 
+                    connectNulls 
+                  />
+
+                  {/* 💗 Foreground Layer: Machine Learning Line */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="display_ml" 
+                    name="Machine Learning Threat Score" 
+                    stroke="#ec4899" 
+                    strokeWidth={2.5} 
+                    dot={false} 
+                    connectNulls 
+                  />
+                  
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -186,7 +315,7 @@ function Stat({
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className={`text-sm ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className={`text-sm ${mono ? "font-mono font-semibold text-primary" : ""}`}>{value}</span>
     </div>
   );
 }

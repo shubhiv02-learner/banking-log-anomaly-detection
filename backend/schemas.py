@@ -64,7 +64,13 @@ class WindowMetricResponse(BaseModel):
 
     priority: str
 
+    ewma : float
+    cusum : float
+    persistence_score : float
+    incident_probability : float
+
     created_at: datetime
+
 
     class Config:
         from_attributes = True  

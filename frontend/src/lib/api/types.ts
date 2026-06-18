@@ -49,6 +49,10 @@ export interface WindowMetric {
   final_score: number;
   prediction: number;
   priority: Priority;
+  ewma : number;
+  cusum : number;
+  persistence_score : number;
+  incident_probability : number;
 }
 export interface ServiceCount {
   service: string;
