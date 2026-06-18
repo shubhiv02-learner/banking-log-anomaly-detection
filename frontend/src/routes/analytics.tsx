@@ -175,83 +175,61 @@ function AnalyticsPage() {
               Raw Mathematical Indicators (CUSUM Volume & Persistence Signal)
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              CUSUM rendered as a soft background volume canvas with the Persistence threshold tracking on top.
+              CUSUM as a soft background volume with the Persistence threshold tracking on top.
             </p>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart 
-                  data={slice.map((row) => {
-                    const rawCusum = parseFloat(row.cusum ?? 0);
-                    const rawPersistence = parseFloat(row.persistence_score ?? 0);
+                <ComposedChart data={slice.map((row) => {
+                              const rawCusum = parseFloat(row.cusum ?? 0);
+                              const rawPersistence = parseFloat(row.persistence_score ?? 0);
 
-                    return {
-                      ...row,
-                      norm_cusum: isNaN(rawCusum) ? 0 : rawCusum / 100,
-                      norm_persistence: isNaN(rawPersistence) ? 0 : (rawPersistence * 100) / 1000
-                    };
-                  })}
-                  margin={{ top: 10, right: 15, left: 15, bottom: 5 }}
-                >
-                  <defs>
-                    {/* 🎨 VISUAL RULES: Softer, premium 12% opacity Slate-Blue gradient canvas */}
+                              return {
+                                ...row,
+                                norm_cusum: isNaN(rawCusum) ? 0 : rawCusum / 1000,
+                                norm_persistence: isNaN(rawPersistence) ? 0 : (rawPersistence * 100) / 1000
+                              };
+                            })}
+                            margin={{ top: 10, right: 15, left: 15, bottom: 5 }} >
+                   <defs>
                     <linearGradient id="cusumAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#475569" stopOpacity={0.4}/> 
-                      <stop offset="95%" stopColor="#475569" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#f1f5f9" stopOpacity={0.5}/> 
+                      <stop offset="95%" stopColor="#f1f5f9" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
-                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
-                  
-                  <YAxis className="text-[10px] fill-muted-foreground">
-                    <Label 
-                      value="Relative Scale Index (k)" 
-                      angle={-90} 
-                      position="insideLeft" 
-                      offset={-5} 
-                      style={{ textAnchor: "middle", fontSize: "10px", fill: "var(--muted-foreground)" }} 
-                    />
-                  </YAxis>
-                  
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
-                    labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
-                    itemStyle={{ fontSize: "12px", padding: "2px 0" }}
-                    formatter={(value: any, name: string) => {
-                      const num = Number(value).toFixed(2);
-                      if (name.includes("Persistence")) {
-                        return [`${num}k`, "Persistence Index"];
-                      }
-                      return [`${(Number(value) * 2).toFixed(2)}k (Standardized)`, "CUSUM Volumetric Accumulator"];
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} />
+                  <YAxis />
 
-                  {/* 🔽 LAYER 1: Muted Background Canvas Fill (Soft Slate Blue) */}
+                  <Tooltip />
+                  <Legend />
+
+                  {/* Filled area */}
                   <Area 
                     type="monotone" 
                     dataKey="norm_cusum" 
                     name="CUSUM Accumulator Volume" 
-                    stroke="#64748b" /* Soft Slate Blue outline */
+                    stroke="#64748b"
                     strokeWidth={1}
-                    fillOpacity={1} 
                     fill="url(#cusumAreaGrad)" 
+                    //fillOpacity={1}
                     connectNulls
                   />
 
-                  {/* 🔼 LAYER 2: Crisp Foreground Layer (Deep Charcoal Slate Line) */}
+                  {/* Overlay line */}
                   <Line 
                     type="monotone" 
                     dataKey="norm_persistence" 
                     name="Persistence Index Signal" 
-                    stroke="#f43f5e"   /*  "#334155" /* 🌑 Solid Deep Slate Gray for strong contrast without brightness */
+                    stroke="#f43f5e"
                     strokeWidth={2} 
                     dot={false}
                     connectNulls
                   />
                 </ComposedChart>
-              </ResponsiveContainer>
+            </ResponsiveContainer>
+
             </div>
           </CardContent>
         </Card>
@@ -259,101 +237,101 @@ function AnalyticsPage() {
        {/* ======================================================================= */}
         {/* CHART 3: BOUNDED PROBABILITIES & COMPOSITE VECTORS (0.0 - 1.0)          */}
         {/* ======================================================================= */}
-          {/* CHART 3: PROBABILITIES & COMPOSITE VECTORS */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold tracking-tight">
-              Statistical Threat Models & Composite Vectors
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                {/* 🛠️ CHANGED WRAPPER FROM AreaChart TO LineChart FOR BALANCED ELEMENT SUPPORT */}
-                <LineChart 
-                  data={slice.map((row) => {
-                    const parsedStatistical = parseFloat(row.statistical_score ?? row.statisticalScore ?? 0);
-                    const parsedProbability = parseFloat(row.incident_probability ?? row.incidentProbability ?? 0);
-                    const parsedML = parseFloat(row.ml_score ?? row.mlScore ?? 0);
-                    const parsedFinal = parseFloat(row.final_score ?? row.finalScore ?? 0);
+         {/* CHART 3: PROBABILITIES & COMPOSITE VECTORS */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold tracking-tight">
+                Statistical Threat Models & Composite Vectors
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  {/* 🛠️ FIX: CHANGED WRAPPER TO ComposedChart TO RENDER BOTH GRADIENT AREAS AND FOREGROUND LINES */}
+                  <ComposedChart 
+                    data={slice.map((row) => {
+                      const parsedStatistical = parseFloat(row.statistical_score ?? row.statisticalScore ?? 0);
+                      const parsedProbability = parseFloat(row.incident_probability ?? row.incidentProbability ?? 0);
+                      const parsedML = parseFloat(row.ml_score ?? row.mlScore ?? 0);
+                      const parsedFinal = parseFloat(row.final_score ?? row.finalScore ?? 0);
 
-                    return {
-                      ...row,
-                      display_statistical: isNaN(parsedStatistical) ? 0 : parsedStatistical,
-                      display_probability: isNaN(parsedProbability) ? 0 : parsedProbability,
-                      display_ml: isNaN(parsedML) ? 0 : parsedML,
-                      display_final: isNaN(parsedFinal) ? 0 : parsedFinal
-                    };
-                  })} 
-                  margin={{ top: 10, right: 15, left: -10, bottom: 5 }}
-                >
-                  <defs>
-                    <linearGradient id="finalScoreGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.15}/>
-                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
-                  <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
-                  <YAxis domain={[0.0, 1.0]} className="text-[10px] fill-muted-foreground" tickFormatter={(v) => Number(v).toFixed(1)} />
-                  
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
-                    labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
-                    itemStyle={{ fontSize: "12px", padding: "2px 0" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                      return {
+                        ...row,
+                        display_statistical: isNaN(parsedStatistical) ? 0 : parsedStatistical,
+                        display_probability: isNaN(parsedProbability) ? 0 : parsedProbability,
+                        display_ml: isNaN(parsedML) ? 0 : parsedML,
+                        display_final: isNaN(parsedFinal) ? 0 : parsedFinal
+                      };
+                    })} 
+                    margin={{ top: 10, right: 15, left: -10, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="finalScoreGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                    <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
+                    <YAxis domain={[0.0, 1.0]} className="text-[10px] fill-muted-foreground" tickFormatter={(v) => Number(v).toFixed(1)} />
+                    
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
+                      labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
+                      itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
 
-                  {/* 🍇 Background Layer: Composite Area Shading */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="display_final" 
-                    name="Composite Threat Vector (Final Weight)" 
-                    stroke="#a855f7" 
-                    strokeWidth={3} 
-                    fillOpacity={1} 
-                    fill="url(#finalScoreGrad)" 
-                    connectNulls 
-                  />
+                    {/* 🍇 1. FIRST LAYER: Background Composite Area Shading with Gradient Fill Enabled */}
+                    <Area 
+                      type="monotone" 
+                      dataKey="display_final" 
+                      name="Composite Threat Vector (Final Weight)" 
+                      stroke="#a855f7" 
+                      strokeWidth={2.5} 
+                      fillOpacity={1} 
+                      fill="url(#finalScoreGrad)" 
+                      connectNulls 
+                    />
 
-                  {/* 🔷 Foreground Layer: Crisp Statistical Line */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="display_statistical" 
-                    name="Statistical Score" 
-                    stroke="#0ea5e9" 
-                    strokeWidth={2.5} 
-                    dot={false} 
-                    connectNulls 
-                  />
+                    {/* 🔷 2. SECOND LAYER: Foreground Statistical Line */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="display_statistical" 
+                      name="Statistical Score" 
+                      stroke="#0ea5e9" 
+                      strokeWidth={2} 
+                      dot={false} 
+                      connectNulls 
+                    />
 
-                  {/* 🔴 Foreground Layer: Incident Probability Line */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="display_probability" 
-                    name="Incident Probability" 
-                    stroke="#f43f5e" 
-                    strokeWidth={2.5} 
-                    dot={false} 
-                    connectNulls 
-                  />
+                    {/* 🔴 3. THIRD LAYER: Foreground Incident Probability Line */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="display_probability" 
+                      name="Incident Probability" 
+                      stroke="#f43f5e" 
+                      strokeWidth={2} 
+                      dot={false} 
+                      connectNulls 
+                    />
 
-                  {/* 💗 Foreground Layer: Machine Learning Line */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="display_ml" 
-                    name="Machine Learning Threat Score" 
-                    stroke="#ec4899" 
-                    strokeWidth={2.5} 
-                    dot={false} 
-                    connectNulls 
-                  />
-                  
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+                    {/* 🟢 4. FOURTH LAYER: Foreground Machine Learning Line */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="display_ml" 
+                      name="Machine Learning Threat Score" 
+                      stroke="#10b981" 
+                      strokeWidth={2} 
+                      dot={false} 
+                      connectNulls 
+                    />
+                    
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
       </div>
     </div>
   );
