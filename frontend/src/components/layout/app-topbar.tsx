@@ -12,7 +12,6 @@ const TITLES: Record<string, string> = {
   "/": "Executive Dashboard",
   "/alerts": "Alerts Center",
   "/analytics": "Service Analytics",
-  "/analytics": "Service Analytics",
   "/incidents": "Incidents Center",
 };
 
