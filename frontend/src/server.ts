@@ -37,14 +37,35 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
-    } catch (error) {
-      console.error(error);
+
+      let response: Response;
+      try {
+        response = await handler.fetch(request, env, ctx);
+
+        // Ensure non-OK responses don’t silently break SSR
+        if (!response.ok) {
+          console.error(`SSR fetch failed: ${response.status} ${response.statusText}`);
+          return new Response(renderErrorPage(), {
+            status: response.status,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          });
+        }
+
+        return await normalizeCatastrophicSsrResponse(response);
+      } catch (innerError) {
+        console.error("Error inside handler.fetch:", innerError);
+        return new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+    } catch (outerError) {
+      console.error("Error loading server entry:", outerError);
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

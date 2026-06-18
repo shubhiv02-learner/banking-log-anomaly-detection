@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog"; // 👈 IMPORT THE UNIFIED DIALOG
 import { api } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import type { Alert, AlertStatus, Priority, ServiceCount } from "@/lib/api/types";
@@ -58,27 +59,14 @@ function AlertsPage() {
       .then((data) => setServices(Array.isArray(data) ? data : data?.data ?? []))
       .catch((err) => console.error("Failed to fetch services:", err));
   }, []);
-useEffect(() => {
-  console.log("alerts count", all.length);
 
-  console.log(
-    "critical count",
-    all.filter(a => a.priority === "Critical").length
-  );
+  useEffect(() => {
+    console.log("alerts count", all.length);
+    console.log("critical count", all.filter(a => a.priority === "Critical").length);
+    console.log("high count", all.filter(a => a.priority === "High").length);
+    console.log("medium count", all.filter(a => a.priority === "Medium").length);
+  }, [all]);
 
-  console.log(
-    "high count",
-    all.filter(a => a.priority === "High").length
-  );
-
-  console.log(
-    "medium count",
-    all.filter(a => a.priority === "Medium").length
-  );
-  const openAlerts = all.filter(
-  a => a.status === "OPEN"
-).length;
-}, [all]);
   const filtered = useMemo(() => {
     return all.filter((a) => {
       if (priority !== "all" && a.priority !== priority) return false;
@@ -97,10 +85,10 @@ useEffect(() => {
   }, [all, priority, status, service, q]);
 
   const counts = [
-  { p: "Critical", n: all.filter((a) => a.priority === "Critical").length },
-  { p: "High", n: all.filter((a) => a.priority === "High").length },
-  { p: "Medium", n: all.filter((a) => a.priority === "Medium").length },
-  { p: "Open", n: all.filter((a) => a.status === "OPEN").length }, // 👈 new card
+    { p: "Critical", n: all.filter((a) => a.priority === "Critical").length },
+    { p: "High", n: all.filter((a) => a.priority === "High").length },
+    { p: "Medium", n: all.filter((a) => a.priority === "Medium").length },
+    { p: "Open", n: all.filter((a) => a.status === "OPEN").length },
   ];
 
   return (
@@ -116,8 +104,8 @@ useEffect(() => {
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-mono text-2xl font-semibold">{n}</span>
                 {p === "Open" ? (
-                  <StatusPill status="OPEN" />   // 👈 use status pill
-                    ) : (
+                  <StatusPill status="OPEN" />
+                ) : (
                   <PriorityBadge priority={p as Priority} />
                 )}
               </div>
@@ -194,6 +182,7 @@ useEffect(() => {
                 <TableHead>Final Score</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Created</TableHead>
+                <TableHead className="w-16 text-center">Actions</TableHead> {/* 👈 ADDED ACTIONS COLUMN */}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -220,12 +209,16 @@ useEffect(() => {
                       addSuffix: true,
                     })}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {/* 👈 MOUNT DYNAMIC ITEM PAYLOAD SEED */}
+                    <IncidentDetailsDialog item={a} />
+                  </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7} // 👈 EXPANDED COLSPAN VALUE TO SHIFT TO THE SEVENTH GRID CELL
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     No alerts match the current filters.

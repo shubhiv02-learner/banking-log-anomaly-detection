@@ -80,6 +80,7 @@ class TicketResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-
+    notification_sent : bool
+    notification_time : datetime
     class Config:
         from_attributes = True

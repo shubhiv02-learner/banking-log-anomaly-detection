@@ -1,6 +1,8 @@
 // Data contracts aligned with the future FastAPI backend.
 // snake_case matches Pydantic; scores are 0..1; dates are ISO 8601 strings.
 
+import { string } from "zod";
+
 export type Priority = "Critical" | "High" | "Medium";
 
 export type AlertStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
@@ -24,6 +26,8 @@ export interface Ticket {
   status: AlertStatus;
   created_at: string;
   updated_at: string;
+  notification_sent : boolean;
+  notification_time : string;
 }
 
 export interface WindowMetric {

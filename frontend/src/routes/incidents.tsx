@@ -52,10 +52,10 @@ function IncidentsPage() {
 
   useEffect(() => {
     api.listTickets()
-      .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
+   .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
       .catch((err) => console.error("Failed to fetch incidents:", err));
   }, []);
-
+ 
   useEffect(() => {
     console.log("Incidents count", all.length);
 
@@ -193,7 +193,7 @@ function IncidentsPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     {/* 👈 CLICKABLE DIALOG ICON INJECTED PER TICKET ROW */}
-                    <IncidentDetailsDialog ticket={a} />
+                    <IncidentDetailsDialog item={a} />
                   </TableCell>
                 </TableRow>
               ))}
