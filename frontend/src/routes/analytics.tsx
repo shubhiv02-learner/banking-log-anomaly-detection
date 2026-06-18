@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, 
   AreaChart, 
   LineChart, 
+  ComposedChart,
   Line, 
   Area, 
   XAxis, 
@@ -167,38 +168,95 @@ function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* ======================================================================= */}
-        {/* CHART 2: UN-BOUNDED MATHEMATICAL ACCUMULATORS                            */}
-        {/* ======================================================================= */}
+        {/* CHART 2: MATHEMATICAL ACCUMULATORS & WEIGHT INDEXES */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold tracking-tight">
-              Raw Mathematical Indicators (CUSUM & Persistence)
+              Raw Mathematical Indicators (CUSUM Volume & Persistence Signal)
             </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              CUSUM rendered as a soft background volume canvas with the Persistence threshold tracking on top.
+            </p>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={slice} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                <ComposedChart 
+                  data={slice.map((row) => {
+                    const rawCusum = parseFloat(row.cusum ?? 0);
+                    const rawPersistence = parseFloat(row.persistence_score ?? 0);
+
+                    return {
+                      ...row,
+                      norm_cusum: isNaN(rawCusum) ? 0 : rawCusum / 100,
+                      norm_persistence: isNaN(rawPersistence) ? 0 : (rawPersistence * 100) / 1000
+                    };
+                  })}
+                  margin={{ top: 10, right: 15, left: 15, bottom: 5 }}
+                >
+                  <defs>
+                    {/* 🎨 VISUAL RULES: Softer, premium 12% opacity Slate-Blue gradient canvas */}
+                    <linearGradient id="cusumAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#475569" stopOpacity={0.4}/> 
+                      <stop offset="95%" stopColor="#475569" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
                   <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
-                  <YAxis className="text-[10px] fill-muted-foreground" tickFormatter={(v) => Number(v).toLocaleString()} />
+                  
+                  <YAxis className="text-[10px] fill-muted-foreground">
+                    <Label 
+                      value="Relative Scale Index (k)" 
+                      angle={-90} 
+                      position="insideLeft" 
+                      offset={-5} 
+                      style={{ textAnchor: "middle", fontSize: "10px", fill: "var(--muted-foreground)" }} 
+                    />
+                  </YAxis>
+                  
                   <Tooltip 
                     contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
                     labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
                     itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                    formatter={(value: any, name: string) => {
+                      const num = Number(value).toFixed(2);
+                      if (name.includes("Persistence")) {
+                        return [`${num}k`, "Persistence Index"];
+                      }
+                      return [`${(Number(value) * 2).toFixed(2)}k (Standardized)`, "CUSUM Volumetric Accumulator"];
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
 
-                  <Line type="monotone" dataKey="cusum" name="CUSUM Raw Accumulator" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
-                  <Line type="monotone" dataKey="persistence_score" name="Persistence Weight Index" stroke="#eab308" strokeWidth={2} dot={false} connectNulls />
-                </LineChart>
+                  {/* 🔽 LAYER 1: Muted Background Canvas Fill (Soft Slate Blue) */}
+                  <Area 
+                    type="monotone" 
+                    dataKey="norm_cusum" 
+                    name="CUSUM Accumulator Volume" 
+                    stroke="#64748b" /* Soft Slate Blue outline */
+                    strokeWidth={1}
+                    fillOpacity={1} 
+                    fill="url(#cusumAreaGrad)" 
+                    connectNulls
+                  />
+
+                  {/* 🔼 LAYER 2: Crisp Foreground Layer (Deep Charcoal Slate Line) */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="norm_persistence" 
+                    name="Persistence Index Signal" 
+                    stroke="#f43f5e"   /*  "#334155" /* 🌑 Solid Deep Slate Gray for strong contrast without brightness */
+                    strokeWidth={2} 
+                    dot={false}
+                    connectNulls
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* ======================================================================= */}
+       {/* ======================================================================= */}
         {/* CHART 3: BOUNDED PROBABILITIES & COMPOSITE VECTORS (0.0 - 1.0)          */}
         {/* ======================================================================= */}
           {/* CHART 3: PROBABILITIES & COMPOSITE VECTORS */}
