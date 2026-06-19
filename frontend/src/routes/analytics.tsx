@@ -68,7 +68,7 @@ function AnalyticsPage() {
   const full = trendQ.data ?? [];
   const slice = range === "1h" ? full.slice(-12) : full;
   const latest = full[full.length - 1];
-  console.log(slice);
+  console.log('chart data :##',{slice});
   const formatXAxis = (tickItem: string) => {
     if (!tickItem) return "";
     try {
@@ -129,50 +129,109 @@ function AnalyticsPage() {
       {/* THREE TIER AUDITED DASHBOARD LAYOUT */}
       <div className="space-y-6">
         
-        {/* ======================================================================= */}
-        {/* CHART 1: INFRASTRUCTURE CORE HARDWARE LAYER                             */}
-        {/* ======================================================================= */}
+        {/* CHART 1: INFRASTRUCTURE CORE HARDWARE LAYER (DYNAMICALLY NORMALIZED) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold tracking-tight">
-              Unified Resource Footprint Overlays
+              Unified Resource Footprint Overlays (Normalized Variance)
             </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Metrics are scaled relatively (0-100%) to maximize micro-variation visibility across 1-minute synthetic windows.
+            </p>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="h-[320px] w-full">
+            <div className="h-[340px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={slice} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                <LineChart 
+                  /* 🛠️ COMPUTE EXTENTS AND NORMALIZE METRICS DYNAMICALLY LINE-BY-LINE */
+                  data={(() => {
+                    if (!slice.length) return [];
+                    
+                    // Extract boundaries for the active dataset slice
+                    const latencies = slice.map(r => parseFloat(r.latency_mean ?? 0));
+                    const ewmas = slice.map(r => parseFloat(r.ewma ?? 0));
+                    const cpus = slice.map(r => parseFloat(r.cpu_mean ?? 0));
+                    const mems = slice.map(r => parseFloat(r.memory_mean ?? 0));
+                    const lags = slice.map(r => parseFloat(r.queue_lag_mean ?? 0));
+
+                    const maxLat = Math.max(...latencies, 1); const minLat = Math.min(...latencies, 0);
+                    const maxEwma = Math.max(...ewmas, 1);   const minEwma = Math.min(...ewmas, 0);
+                    const maxCpu = Math.max(...cpus, 1);     const minCpu = Math.min(...cpus, 0);
+                    const maxMem = Math.max(...mems, 1);     const minMem = Math.min(...mems, 0);
+                    const maxLag = Math.max(...lags, 1);     const minLag = Math.min(...lags, 0);
+
+                    // Helper function to transform values to a clean 0 - 100 range
+                    const norm = (val: number, min: number, max: number) => {
+                      if (max === min) return 50;
+                      return ((val - min) / (max - min)) * 100;
+                    };
+
+                    return slice.map((row) => ({
+                      ...row,
+                      // Keep original values for the tooltip display
+                      raw_latency: parseFloat(row.latency_mean ?? 0),
+                      raw_ewma: parseFloat(row.ewma ?? 0),
+                      raw_cpu: parseFloat(row.cpu_mean ?? 0),
+                      raw_mem: parseFloat(row.memory_mean ?? 0),
+                      raw_lag: parseFloat(row.queue_lag_mean ?? 0),
+
+                      // Normalized plotting values passed to the Line tracks
+                      norm_latency: norm(parseFloat(row.latency_mean ?? 0), minLat, maxLat),
+                      norm_ewma: norm(parseFloat(row.ewma ?? 0), minEwma, maxEwma),
+                      norm_cpu: norm(parseFloat(row.cpu_mean ?? 0), minCpu, maxCpu),
+                      norm_mem: norm(parseFloat(row.memory_mean ?? 0), minMem, maxMem),
+                      norm_lag: norm(parseFloat(row.queue_lag_mean ?? 0), minLag, maxLag),
+                    }));
+                  })()}
+                  margin={{ top: 10, right: 15, left: -5, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
                   <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
                   
-                  <YAxis yAxisId="left" orientation="left" className="text-[10px] fill-muted-foreground">
-                    <Label value="Latency / EWMA (ms)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: "middle", fontSize: "10px", fill: "var(--muted-foreground)" }} />
-                  </YAxis>
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} className="text-[10px] fill-muted-foreground" unit="%" />
+                  {/* Universal scale wrapper representing relative operational bounds */}
+                  <YAxis domain={[0, 100]} className="text-[10px] fill-muted-foreground" unit="%" />
                   
                   <Tooltip 
                     contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
                     labelStyle={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "bold", color: "var(--foreground)" }}
                     itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                    /* 💡 INTERCEPT HOVER AND RESTORE RAW METRIC SCALE LABELS */
+                    formatter={(value: any, name: string, props: any) => {
+                      const payload = props.payload;
+                      switch (name) {
+                        case "Latency (Mean)":
+                          return [`${payload.raw_latency.toFixed(1)} ms`, name];
+                        case "EWMA Latency":
+                          return [`${payload.raw_ewma.toFixed(1)} ms`, name];
+                        case "CPU Utilization":
+                          return [`${payload.raw_cpu.toFixed(1)}%`, name];
+                        case "Memory Utilization":
+                          return [`${payload.raw_mem.toFixed(1)}%`, name];
+                        case "Queue Lag":
+                          return [`${payload.raw_lag.toFixed(2)} items`, name];
+                        default:
+                          return [value, name];
+                      }
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
                   
-                  <Line yAxisId="left" type="monotone" dataKey="latency_mean" name="Latency (Mean)" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
-                  <Line yAxisId="left" type="monotone" dataKey="ewma" name="EWMA Smoothed Latency" stroke="#f97316" strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls />
-                  <Line yAxisId="left" type="monotone" dataKey="queue_lag_mean" name="Queue Lag" stroke="#eab308" strokeWidth={1.5} dot={false} strokeDasharray="2 2" connectNulls />
-                  <Line yAxisId="right" type="monotone" dataKey="cpu_mean" name="CPU Utilization" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
-                  <Line yAxisId="right" type="monotone" dataKey="memory_mean" name="Memory Utilization" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+                  {/* Performance Paths mapped to normalized variance variables */}
+                  <Line type="monotone" dataKey="norm_latency" name="Latency (Mean)" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_ewma" name="EWMA Latency" stroke="#f97316" strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_lag" name="Queue Lag" stroke="#eab308" strokeWidth={1.5} strokeDasharray="2 2" dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_cpu" name="CPU Utilization" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_mem" name="Memory Utilization" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-
         {/* CHART 2: MATHEMATICAL ACCUMULATORS & WEIGHT INDEXES */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold tracking-tight">
-              Raw Mathematical Indicators (CUSUM Volume & Persistence Signal)
+              Statistical Indicators (CUSUM Volume & Persistence Signal)
             </CardTitle>
             <p className="text-xs text-muted-foreground">
               CUSUM as a soft background volume with the Persistence threshold tracking on top.

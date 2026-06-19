@@ -201,7 +201,7 @@ const aggregateBuckets: WindowMetric[] = Object.entries(bucketsByWindow).map(
   	  <HealthTile
         service={serviceLabel(w.service)}
         priority={getServiceHealth(w.service,allAlerts,w.priority)}
-        score={w.final_score}
+       
 />
   	))}
       </div>

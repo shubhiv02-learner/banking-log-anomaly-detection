@@ -3,12 +3,12 @@ import type { Priority } from "@/lib/api/types";
 
 export function HealthTile({
   service,
-  priority,
-  score,
+  priority
+ 
 }: {
   service: string;
   priority: Priority;
-  score: number;
+  
 }) {
   const status = priorityToHealth(priority);
   const s = HEALTH_STYLES[status];
@@ -21,7 +21,7 @@ export function HealthTile({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{service}</p>
           <p className="font-mono text-[10px] text-muted-foreground">
-            score {score.toFixed(2)}
+            
           </p>
         </div>
       </div>
