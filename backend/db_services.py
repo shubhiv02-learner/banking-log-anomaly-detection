@@ -137,3 +137,20 @@ def update_ticket_Notified(tick_id):
     finally:
         db.close()
 
+def update_window_payload(payload_summary, payload_json, win_id):
+    db = SessionLocal()
+
+    try:
+
+        # Update window in the database based on window_id, add payload details
+        existing_record = db.query(WindowMetrics).filter_by(id=win_id).first()
+        if existing_record:
+            existing_record.payload_summary = payload_summary
+            existing_record.payload_json = payload_json
+        
+            # Remember to commit the changes
+            db.commit()
+        return 
+
+    finally:
+        db.close()

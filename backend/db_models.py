@@ -5,7 +5,7 @@ from sqlalchemy import Float
 from sqlalchemy import String
 from sqlalchemy import DateTime
 from sqlalchemy.sql import func
-
+from sqlalchemy.dialects.postgresql import JSONB
 Base = declarative_base()
 
 
@@ -72,7 +72,8 @@ class WindowMetrics(Base):
     prediction = Column(Integer)
 
     priority = Column(String)
-
+    payload_summary = Column(JSONB, nullable=True)
+    payload_json = Column(JSONB, nullable=True)
     created_at = Column(
         DateTime,
         server_default=func.now(),

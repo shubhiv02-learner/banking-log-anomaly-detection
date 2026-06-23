@@ -20,6 +20,7 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import json
+
 #from confluent_kafka import Consumer, KafkaError, KafkaException - Not working with Controller
 
 from src.stream_metrics import StreamMetrics
@@ -31,7 +32,8 @@ from config import WINDOW_SIZE_MINUTES
 from backend.db_services import (
     save_window_metric,
     save_alert,
-    save_ticket
+    save_ticket,
+    update_window_payload,
 )
 # Initialize components
 metrics_engine = StreamMetrics()
@@ -39,6 +41,33 @@ detector = EnsembleDetector()
 ensemble = EnsembleEngine()
 service_buffers = defaultdict(list)
 
+def save_payload_summary(raw_window_df, window_metric_id):
+    raw_window_df = raw_window_df.copy()
+    print(f"List of regions : {raw_window_df['region']}")
+    payload_summary = {
+        "regions": list(raw_window_df["region"].dropna().unique()),
+        "top_error_codes": (
+            raw_window_df[raw_window_df["error_code"] != "ERR-000"]
+            ["error_code"]
+            .value_counts()
+            .head(5)
+            .index
+            .tolist()
+        ),
+        "affected_clients": raw_window_df["client_id"].nunique(),
+        "affected_hosts": raw_window_df["machine_id"].nunique(),
+        "top_endpoints": (
+            raw_window_df["endpoint"]
+            .value_counts()
+            .head(5)
+            .index
+            .tolist()
+        ),
+        "transaction_value": float(raw_window_df["amount"].sum()),
+        "record_count": len(raw_window_df),
+    }
+    payload_json = raw_window_df.to_dict(orient="records")
+    update_window_payload(payload_summary, payload_json, window_metric_id)
 
 
 # Configuration dictionary using standard dot properties
@@ -89,6 +118,7 @@ try:
                 for service, records in list(service_buffers.items()):
                     if len(records) == 0:
                         continue
+                    raw_window_df = pd.DataFrame(records).copy()
                     window_df = create_window_features(records)
                     ml_result = detector.score_window(window_df) #ML Scores + raw scores for normalization
                     print(type(window_df.iloc[0]["ewma_mean"]))
@@ -155,6 +185,7 @@ try:
                                     "priority":
                                         ensemble_result["priority"],
                                 }
+                        save_payload_summary(raw_window_df, metric.id)
                         alert = save_alert(alert_data)
                         print("Alert saved to database")
                         ticket_data = {
