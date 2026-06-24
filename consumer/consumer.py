@@ -40,7 +40,7 @@ metrics_engine = StreamMetrics()
 detector = EnsembleDetector()
 ensemble = EnsembleEngine()
 service_buffers = defaultdict(list)
-
+raw_record_buffer = defaultdict(list)
 def save_payload_summary(raw_window_df, window_metric_id):
     raw_window_df = raw_window_df.copy()
     print(f"List of regions : {raw_window_df['region']}")
@@ -98,12 +98,16 @@ try:
 
                 #print("got raw value of msg")
                 record = json.loads(raw_value)
-                #print(f"Message received   {record}")
-                record["timestamp"] = (pd.to_datetime(record["timestamp"]))
+                #print(f"Message received   {}")
+                #record["timestamp"] = (pd.to_datetime(record["timestamp"]))
+                record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
+                #record["timestamp"] = pd.to_datetime(record["timestamp"], format="%d-%m-%Y %H:%M:%S")
+
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
                     print(f"Error processing message: {e}, continue with next message")
                     continue
             #print("Message converted to datetime")
+            raw_record_buffer[record["service"]].append(record)  
             record = metrics_engine.update(record)
             #print("Message metrics processed .......")
             service = record["service"]
@@ -118,7 +122,7 @@ try:
                 for service, records in list(service_buffers.items()):
                     if len(records) == 0:
                         continue
-                    raw_window_df = pd.DataFrame(records).copy()
+                    
                     window_df = create_window_features(records)
                     ml_result = detector.score_window(window_df) #ML Scores + raw scores for normalization
                     print(type(window_df.iloc[0]["ewma_mean"]))
@@ -185,7 +189,9 @@ try:
                                     "priority":
                                         ensemble_result["priority"],
                                 }
-                        save_payload_summary(raw_window_df, metric.id)
+                        print(f"Save payload summary consumer :{raw_record_buffer}")
+                        input("Enter..")
+                        save_payload_summary(raw_record_buffer, metric.id)
                         alert = save_alert(alert_data)
                         print("Alert saved to database")
                         ticket_data = {
@@ -199,6 +205,7 @@ try:
                         save_ticket(ticket_data)
                         print("Ticket saved to database")
                 service_buffers.clear()
+                raw_record_buffer.clear()
                 window_start = datetime.now(timezone.utc)
                 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)    
         except Exception as e:

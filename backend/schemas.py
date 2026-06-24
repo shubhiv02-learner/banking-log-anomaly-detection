@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-
+from sqlalchemy.dialects.postgresql import JSONB
 
 class AlertResponse(BaseModel):
 
@@ -68,6 +68,8 @@ class WindowMetricResponse(BaseModel):
     cusum : float
     persistence_score : float
     incident_probability : float
+    payload_json : JSONB
+    payload_summary : JSONB
 
     created_at: datetime
 

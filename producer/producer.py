@@ -3,9 +3,12 @@ import pandas as pd
 import json
 import time
 from pathlib import Path
-
-import json
 from confluent_kafka import Producer
+import os
+import sys
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import numpy as np
 
 def delivery_report(err, msg):
     """ Called once for each message success or failure. """
@@ -25,16 +28,28 @@ producer = Producer(conf)
 try:
     print("🚀 Attempting connection to localhost:9092...")
     
-    BASE_DIR = Path(__file__).resolve().parent.parent
 
-    file_path = BASE_DIR / "data" / "banking_logs.csv"
-    #csv_path = BASE_DIR / "data/processed" / "banking_logs_processed.csv"
-    
+
+    #file_path = BASE_DIR / "data" / "banking_logs.csv"
+    #file_path = BASE_DIR / "data/processed" / "banking_logs_processed_new.csv"
+
+    # 1. Dynamically calculate the path to the root folder
+    SCRIPT_DIR = Path(__file__).resolve().parent
+    ROOT_DIR = SCRIPT_DIR.parent
+    if str(ROOT_DIR) not in sys.path:
+        sys.path.append(str(ROOT_DIR))
+
+    load_dotenv()
+    file_path = Path(os.getenv("OUTPUT_DATA_LOG_PATH_CSV"))
+
     def batch_then_stream(file_path):
         # --- Batch mode: process whole file once ---
         df = pd.read_csv(file_path)   # assumes CSV with consistent columns
+        print(df.columns)
+        input('in producer ...')
         for _, row in df.iterrows():
             record = row.to_dict()
+           
             producer.produce("banking_logs", json.dumps(record).encode("utf-8"), callback=delivery_report)
             producer.poll(0)
         producer.flush()

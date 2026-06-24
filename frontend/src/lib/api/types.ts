@@ -2,6 +2,10 @@
 // snake_case matches Pydantic; scores are 0..1; dates are ISO 8601 strings.
 
 import { string } from "zod";
+// 1. Define the core JSON types
+export type JSONValue = string | number | boolean | null | JSONObject | JSONArray;
+export type JSONObject = { [key: string]: JSONValue };
+export type JSONArray = JSONValue[];
 
 export type Priority = "Critical" | "High" | "Medium";
 
@@ -53,6 +57,8 @@ export interface WindowMetric {
   cusum : number;
   persistence_score : number;
   incident_probability : number;
+  payload_json: JSONObject
+  payload_summary : JSONObject
 }
 export interface ServiceCount {
   service: string;
