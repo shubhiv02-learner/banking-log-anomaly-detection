@@ -41,34 +41,77 @@ detector = EnsembleDetector()
 ensemble = EnsembleEngine()
 service_buffers = defaultdict(list)
 raw_record_buffer = defaultdict(list)
-def save_payload_summary(raw_window_df, window_metric_id):
-    raw_window_df = raw_window_df.copy()
-    print(f"List of regions : {raw_window_df['region']}")
-    payload_summary = {
-        "regions": list(raw_window_df["region"].dropna().unique()),
-        "top_error_codes": (
-            raw_window_df[raw_window_df["error_code"] != "ERR-000"]
-            ["error_code"]
-            .value_counts()
-            .head(5)
-            .index
-            .tolist()
-        ),
-        "affected_clients": raw_window_df["client_id"].nunique(),
-        "affected_hosts": raw_window_df["machine_id"].nunique(),
-        "top_endpoints": (
-            raw_window_df["endpoint"]
-            .value_counts()
-            .head(5)
-            .index
-            .tolist()
-        ),
-        "transaction_value": float(raw_window_df["amount"].sum()),
-        "record_count": len(raw_window_df),
-    }
-    payload_json = raw_window_df.to_dict(orient="records")
-    update_window_payload(payload_summary, payload_json, window_metric_id)
+def save_payload_summary(raw_window, window_metric_id):
+    try:
+        # --- FIX: Inspect and extract the data safely ---
+       # --- 1. EXTRACT THE CLEAN DATA ---
+        # Look at the end of your printout: "}]})". 
+        # This checks if your data is wrapped inside a dictionary or object.
+        print(f"Raw window: {raw_window}")
+        if isinstance(raw_window, dict):
+            # If it's a dict holding a list under a key like 'records' or 'data'
+            if "records" in raw_window:
+                records = raw_window["records"]
+                print("In records")
+            elif "data" in raw_window:
+                records = raw_window["data"]
+                print("In data")
+            else:
+                # If it's a flat dictionary (single record), wrap it in a list
+                records = [raw_window]
+                print("In single record")
+        elif hasattr(raw_window, "records"):
+            records = raw_window.records
+            print("In records 2")
+        else:
+            # If it's already a clean list/tuple of dictionaries
+            records = raw_window
+            print("In else clean list")
 
+        # --- 2. CREATE THE DATAFRAME DIRECTLY ---
+        # Feeding a list of dicts directly to pd.DataFrame fixes the length mismatch
+        raw_window_df = pd.DataFrame(records) 
+        print("Dataframe done")
+        print(f"List of regions: {raw_window_df['region'].dropna().unique().tolist()}")
+        if "timestamp" in raw_window_df.columns:
+            # Convert pandas Timestamp objects to standard ISO string format (YYYY-MM-DD HH:MM:SS)
+            raw_window_df["timestamp"] = pd.to_datetime(raw_window_df["timestamp"], format="mixed", dayfirst=True)
+            raw_window_df["timestamp"] = raw_window_df["timestamp"].dt.strftime('%Y-%m-%d %H:%M:%S')
+        raw_window_df = raw_window_df.where(pd.notnull(raw_window_df), "0")
+        # Generate the JSON records from the cleaned DataFrame
+        payload_json = raw_window_df.to_dict(orient="records")        
+        payload_summary = {
+            "regions": list(raw_window_df["region"].dropna().unique()),
+            "top_error_codes": (
+                raw_window_df[raw_window_df["error_code"] != "ERR-000"]
+                ["error_code"]
+                .value_counts()
+                .head(5)
+                .index
+                .tolist()
+            ),
+            "affected_clients": raw_window_df["client_id"].nunique(),
+            "affected_hosts": raw_window_df["machine_id"].nunique(),
+            "top_endpoints": (
+                raw_window_df["endpoint"]
+                .value_counts()
+                .head(5)
+                .index
+                .tolist()
+            ),
+            "transaction_value": float(raw_window_df["amount"].sum()),
+            "record_count": len(raw_window_df),
+        }
+        payload_json = raw_window_df.to_dict(orient="records")
+        print("Before update")
+        update_window_payload(payload_summary, payload_json, window_metric_id)
+        print("After update summary")
+        return 
+    except Exception as e:
+        print(f"Error {e}")
+        input("Error in save payload: ")
+        return 
+ 
 
 # Configuration dictionary using standard dot properties
 consumer = KafkaConsumer(
@@ -100,9 +143,9 @@ try:
                 record = json.loads(raw_value)
                 #print(f"Message received   {}")
                 #record["timestamp"] = (pd.to_datetime(record["timestamp"]))
-                record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
+                #record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], format="%d-%m-%Y %H:%M:%S")
-
+                record["timestamp"] = pd.to_datetime(record["timestamp"], format="mixed", dayfirst=True)
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
                     print(f"Error processing message: {e}, continue with next message")
                     continue
@@ -190,8 +233,11 @@ try:
                                         ensemble_result["priority"],
                                 }
                         print(f"Save payload summary consumer :{raw_record_buffer}")
-                        input("Enter..")
-                        save_payload_summary(raw_record_buffer, metric.id)
+                        input("Enter save summary..")
+                        #service_name = metric.service  # or however you get the current service name
+                        records_list = raw_record_buffer[service]
+                        save_payload_summary(records_list, metric.id)
+                        input("Enter haha summary saved")
                         alert = save_alert(alert_data)
                         print("Alert saved to database")
                         ticket_data = {

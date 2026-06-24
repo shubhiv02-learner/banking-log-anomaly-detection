@@ -62,9 +62,12 @@ def save_ticket(ticket_data):
 
     finally:
         db.close()
-        notified =  notify_n8n(ticket)
-        if notified is not None:
-            update_ticket_Notified(ticket.ticket_id)
+        if  ticket.priority == "Critical":
+            print(f"Ticket priority{ticket.priority}")
+            notified =  notify_n8n(ticket)
+            if notified is not None:
+                update_ticket_Notified(ticket.ticket_id)
+       
 
 
 
