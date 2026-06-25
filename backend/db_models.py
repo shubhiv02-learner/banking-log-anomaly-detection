@@ -92,6 +92,9 @@ class Ticket(Base):
     assignee = Column(String)
     notification_sent = Column(Boolean, default =False)
     notification_time = Column(DateTime, server_default=func.now())
+    incident_summary = Column(JSONB, nullable=True)
+    resolution = Column(String)
+    preventive_action = Column(String)
     created_at = Column(
         DateTime,
         server_default=func.now(),

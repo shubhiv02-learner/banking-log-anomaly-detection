@@ -27,6 +27,7 @@ from src.stream_metrics import StreamMetrics
 from src.feature_engineering import create_window_features
 from src.detector import EnsembleDetector
 from src.ensemble import EnsembleEngine
+from src.enrichment import build_payload_details, build_incident_summary, enrich_incident_details, enrich_metrics_details
 from config import WINDOW_SIZE_MINUTES
 
 from backend.db_services import (
@@ -34,84 +35,53 @@ from backend.db_services import (
     save_alert,
     save_ticket,
     update_window_payload,
+    load_error_mapping
 )
 # Initialize components
 metrics_engine = StreamMetrics()
 detector = EnsembleDetector()
 ensemble = EnsembleEngine()
+
+#Load masters
+ERROR_MAPPING = load_error_mapping()
+#print(f"Error master: {ERROR_MAPPING}")
+
+##To be done
+#SERVICE_MASTER = load_service_master()
+#SERVICE_ENDPOINT_MAPPING = load_service_endpoint_mapping()
+
 service_buffers = defaultdict(list)
 raw_record_buffer = defaultdict(list)
-def save_payload_summary(raw_window, window_metric_id):
-    try:
-        # --- FIX: Inspect and extract the data safely ---
-       # --- 1. EXTRACT THE CLEAN DATA ---
-        # Look at the end of your printout: "}]})". 
-        # This checks if your data is wrapped inside a dictionary or object.
-        print(f"Raw window: {raw_window}")
-        if isinstance(raw_window, dict):
-            # If it's a dict holding a list under a key like 'records' or 'data'
-            if "records" in raw_window:
-                records = raw_window["records"]
-                print("In records")
-            elif "data" in raw_window:
-                records = raw_window["data"]
-                print("In data")
-            else:
-                # If it's a flat dictionary (single record), wrap it in a list
-                records = [raw_window]
-                print("In single record")
-        elif hasattr(raw_window, "records"):
-            records = raw_window.records
-            print("In records 2")
-        else:
-            # If it's already a clean list/tuple of dictionaries
-            records = raw_window
-            print("In else clean list")
-
-        # --- 2. CREATE THE DATAFRAME DIRECTLY ---
-        # Feeding a list of dicts directly to pd.DataFrame fixes the length mismatch
-        raw_window_df = pd.DataFrame(records) 
-        print("Dataframe done")
-        print(f"List of regions: {raw_window_df['region'].dropna().unique().tolist()}")
-        if "timestamp" in raw_window_df.columns:
-            # Convert pandas Timestamp objects to standard ISO string format (YYYY-MM-DD HH:MM:SS)
-            raw_window_df["timestamp"] = pd.to_datetime(raw_window_df["timestamp"], format="mixed", dayfirst=True)
-            raw_window_df["timestamp"] = raw_window_df["timestamp"].dt.strftime('%Y-%m-%d %H:%M:%S')
-        raw_window_df = raw_window_df.where(pd.notnull(raw_window_df), "0")
-        # Generate the JSON records from the cleaned DataFrame
-        payload_json = raw_window_df.to_dict(orient="records")        
-        payload_summary = {
-            "regions": list(raw_window_df["region"].dropna().unique()),
-            "top_error_codes": (
-                raw_window_df[raw_window_df["error_code"] != "ERR-000"]
-                ["error_code"]
-                .value_counts()
-                .head(5)
-                .index
-                .tolist()
-            ),
-            "affected_clients": raw_window_df["client_id"].nunique(),
-            "affected_hosts": raw_window_df["machine_id"].nunique(),
-            "top_endpoints": (
-                raw_window_df["endpoint"]
-                .value_counts()
-                .head(5)
-                .index
-                .tolist()
-            ),
-            "transaction_value": float(raw_window_df["amount"].sum()),
-            "record_count": len(raw_window_df),
-        }
-        payload_json = raw_window_df.to_dict(orient="records")
-        print("Before update")
-        update_window_payload(payload_summary, payload_json, window_metric_id)
-        print("After update summary")
-        return 
-    except Exception as e:
-        print(f"Error {e}")
-        input("Error in save payload: ")
-        return 
- 
+"""
+def enrich_payload_summary(payload_summary, errors):
+    enriched_summary = payload_summary.copy()
+    enriched_summary["top_errors"] = []
+    
+    # Loop through each error in the 'top_errors' list
+    
+    for code in errors:
+        error_details = []
+        print("In enrichment process loopTop Errors" )
+        #code = error_item.get("error_code")
+        print(f"Error code is in enrichment {code}")
+        # Check if this error code exists in your mapping
+        info = ERROR_MAPPING.get(code, {
+            "error_name": "Unknown Error",
+            "root_cause_description": "No details available",
+            "business_impact": "Unknown",
+            "category": "GENERAL"
+        })
+    
+        error_details.append({
+            "error_code": code,
+            "error_name": info["error_name"],
+            "category": info["category"]
+        })
+        
+        enriched_summary["top_errors"].append(error_details)
+    
+    return enriched_summary
+"""    
 
 # Configuration dictionary using standard dot properties
 consumer = KafkaConsumer(
@@ -141,11 +111,12 @@ try:
 
                 #print("got raw value of msg")
                 record = json.loads(raw_value)
-                #print(f"Message received   {}")
+                #print(f"Message received   {record}")
                 #record["timestamp"] = (pd.to_datetime(record["timestamp"]))
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], format="%d-%m-%Y %H:%M:%S")
                 record["timestamp"] = pd.to_datetime(record["timestamp"], format="mixed", dayfirst=True)
+                #print("timestamp converted")
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
                     print(f"Error processing message: {e}, continue with next message")
                     continue
@@ -168,7 +139,7 @@ try:
                     
                     window_df = create_window_features(records)
                     ml_result = detector.score_window(window_df) #ML Scores + raw scores for normalization
-                    print(type(window_df.iloc[0]["ewma_mean"]))
+                    #print(type(window_df.iloc[0]["ewma_mean"]))
                     #input(f"Press Enter to continue...") # Debug: pause before ensemble prediction
                     ensemble_input = {
                             "service": service,
@@ -184,7 +155,7 @@ try:
                     print(f"Ensemble input: if_score: {ensemble_input['if_score']} ocsvm_score: {ensemble_input['ocsvm_score']}") # Debug: print ensemble input
                     ensemble_result = ensemble.predict(ensemble_input) #Final ensemble score + priority
                     print(f"In consumer Ensemble result: {ensemble_result}")
-                    print(f"In consumer window_df.columns before renameing : {window_df.columns}")
+                    #print(f"In consumer window_df.columns before renameing : {window_df.columns}")
                     #Column names to match database table names
                     window_df = window_df.rename(columns={
                         "latency_ms_mean": "latency_mean",
@@ -203,7 +174,7 @@ try:
 
                          "error_count_sum": "error_count"
                         })
-                    print(f"In consumer before enrichment {window_df.columns}")
+                    #print(f"In consumer before enrichment {window_df.columns}")
                     #Enrich it to save additional info in database
                     window_df["service"] = service
                     window_df["ml_score"] = ensemble_result["ml_score"]
@@ -215,7 +186,7 @@ try:
                     window_df["window_end"] = window_end
                     window_df["record_count"] = len(records)
                     window_metric_data = window_df.iloc[0].to_dict()
-                    print(f"In consumer window metric data {window_metric_data}")
+                    #print(f"In consumer window metric data {window_metric_data}")
                     metric = save_window_metric(window_metric_data)
                     print(f"In consumer metric data saved ")
                     if ensemble_result["prediction"]:
@@ -232,30 +203,53 @@ try:
                                     "priority":
                                         ensemble_result["priority"],
                                 }
-                        print(f"Save payload summary consumer :{raw_record_buffer}")
-                        input("Enter save summary..")
-                        #service_name = metric.service  # or however you get the current service name
+                        #print(f"Save payload summary consumer :{raw_record_buffer}")
                         records_list = raw_record_buffer[service]
-                        save_payload_summary(records_list, metric.id)
-                        input("Enter haha summary saved")
+                        payload_summary, payload_json = build_payload_details(records_list, ERROR_MAPPING)
+
+                        raw_errors = payload_summary["top_errors"]
+                        top_errors = [e if str(e).startswith("ERR") else "ERR-000" for e in raw_errors]
+                        
+                        # Enrich metrics
+                        metrics_details = enrich_metrics_details(top_errors, ERROR_MAPPING)
+                        metric_payload_summary = payload_summary
+                        metric_payload_summary["metrics_details"] = metrics_details
+                        update_window_payload(metric_payload_summary, payload_json,  metric.id)
+                        
                         alert = save_alert(alert_data)
                         print("Alert saved to database")
+
+                        # Enrich incidents
+                        ticket_details = enrich_incident_details(top_errors, ERROR_MAPPING)
+                        ticket_payload_summary = payload_summary
+                        ticket_payload_summary["metrics_details"] = ticket_details
+
                         ticket_data = {
                                     "alert_id": alert.id,
                                     "ticket_id":f"INC-{datetime.now().strftime('%Y%m%d')}-{alert.id}",
                                     "service":alert.service,
                                     "priority":alert.priority,
+                                    "incident_summary":ticket_payload_summary,
                                     "assignee":"SUPPORT"
                                 }
                         print("Ticket data prepared")
                         save_ticket(ticket_data)
                         print("Ticket saved to database")
+                        
+                        if alert.priority in ["HIGH", "CRITICAL"]:
+                            incident_summary = build_incident_summary(
+                                            service,
+                                            alert.priority,
+                                            payload_summary
+                                            )
+                            #update_incident_summary
                 service_buffers.clear()
                 raw_record_buffer.clear()
                 window_start = datetime.now(timezone.utc)
                 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)    
         except Exception as e:
                 print(f"Error processing message: {e}, continue with next message")
+                input("Investigate Issue")
                 continue
                 
             

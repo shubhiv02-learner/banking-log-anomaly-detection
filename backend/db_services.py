@@ -4,7 +4,7 @@ import json
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from datetime import datetime
-
+from sqlalchemy import text
 
 
 def save_window_metric(window_metric_data):
@@ -157,3 +157,31 @@ def update_window_payload(payload_summary, payload_json, win_id):
 
     finally:
         db.close()
+
+def load_error_mapping():
+    db = SessionLocal()
+    rows = db.execute(text("""
+    SELECT
+        error_code,
+        error_name,
+        description AS root_cause_description,
+        business_impact,
+        customer_impact,   
+        recommended_action,
+        severity_default,
+        category
+    FROM error_mapping
+    """)).fetchall()
+
+    return {
+        row.error_code: {
+            "error_name": row.error_name,
+            "root_cause_description": row.root_cause_description,
+            "business_impact": row.business_impact,
+            "customer_impact": row.customer_impact,
+            "recommended_action": row.recommended_action,
+            "severity_default": row.severity_default,
+            "category": row.category
+        }
+        for row in rows
+    }
