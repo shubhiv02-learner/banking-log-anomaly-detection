@@ -1,5 +1,5 @@
 # Window Configuration
-WINDOW_SIZE_MINUTES = 0.1 #later 5
+WINDOW_SIZE_MINUTES = 1 #later 5
 
 # Rolling Normalization
 ROLLING_NORMALIZATION_WINDOW = 2 #temp 2, 288 × 5 min = 24 hours

@@ -1,6 +1,8 @@
 from datetime import datetime
 from pydantic import BaseModel
-from sqlalchemy.dialects.postgresql import JSONB
+#from sqlalchemy.dialects.postgresql import JSONB
+# Replace JSONB with standard Python type annotations
+from typing import Dict, Any, List, Union, Optional 
 
 class AlertResponse(BaseModel):
 
@@ -30,6 +32,7 @@ class ServiceDistribution(BaseModel):
 
     service: str
     count: int
+
 
 class WindowMetricResponse(BaseModel):
 
@@ -68,14 +71,20 @@ class WindowMetricResponse(BaseModel):
     cusum : float
     persistence_score : float
     incident_probability : float
-    payload_json : JSONB
-    payload_summary : JSONB
 
+    #  FIX: Changed from JSONB to primitive Python types
+    # (Using Union allows your JSON to be either an object/dictionary or an array/list)
+    #payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
+    #payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
     created_at: datetime
 
 
     class Config:
         from_attributes = True  
+
+class WindowMetricsDetail(WindowMetricResponse):
+    payload_json: dict | None
+    payload_summary: str | None
 
 class TicketResponse(BaseModel):
 
@@ -89,6 +98,9 @@ class TicketResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     notification_sent : bool
-    notification_time : datetime
+    notification_time : Optional[datetime] = None
+    incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
+    preventive_action : Optional[str] = None
+    resolution : Optional[str] = None
     class Config:
         from_attributes = True

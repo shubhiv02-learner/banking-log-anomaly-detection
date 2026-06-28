@@ -1,9 +1,5 @@
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, Boolean
-from sqlalchemy import Integer
-from sqlalchemy import Float
-from sqlalchemy import String
-from sqlalchemy import DateTime
+from sqlalchemy import Column, Boolean, Integer, Float, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 Base = declarative_base()

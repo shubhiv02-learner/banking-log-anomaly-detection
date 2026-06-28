@@ -68,7 +68,7 @@ function AnalyticsPage() {
   const full = trendQ.data ?? [];
   const slice = range === "1h" ? full.slice(-12) : full;
   const latest = full[full.length - 1];
-  console.log('chart data :##',{slice});
+ 
   const formatXAxis = (tickItem: string) => {
     if (!tickItem) return "";
     try {
@@ -78,7 +78,8 @@ function AnalyticsPage() {
       return tickItem;
     }
   };
-
+ 
+  console.log("sample metric for chart ###", slice[0]);
   return (
     <div className="space-y-6">
       {/* GLOBAL CONTROLS HEADER CARD */}
@@ -130,66 +131,63 @@ function AnalyticsPage() {
       <div className="space-y-6">
         
         {/* CHART 1: INFRASTRUCTURE CORE HARDWARE LAYER (DYNAMICALLY NORMALIZED) */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold tracking-tight">
-              Unified Resource Footprint Overlays (Normalized Variance)
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Metrics are scaled relatively (0-100%) to maximize micro-variation visibility across 1-minute synthetic windows.
-            </p>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="h-[340px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart 
-                  /* 🛠️ COMPUTE EXTENTS AND NORMALIZE METRICS DYNAMICALLY LINE-BY-LINE */
-                  data={(() => {
-                    if (!slice.length) return [];
-                    
-                    // Extract boundaries for the active dataset slice
-                    const latencies = slice.map(r => parseFloat(r.latency_mean ?? 0));
-                    const ewmas = slice.map(r => parseFloat(r.ewma ?? 0));
-                    const cpus = slice.map(r => parseFloat(r.cpu_mean ?? 0));
-                    const mems = slice.map(r => parseFloat(r.memory_mean ?? 0));
-                    const lags = slice.map(r => parseFloat(r.queue_lag_mean ?? 0));
+          {/* CHART 1 */}
+        {slice.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold tracking-tight">
+                Unified Resource Footprint Overlays (Normalized Variance)
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Metrics are scaled relatively (0-100%) to maximize micro-variation visibility across 1-minute synthetic windows.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="h-[340px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={(() => {
+                      if (!slice.length) return [];
+                      const latencies = slice.map(r => Number(r.latency_mean ?? 0));
+                      const ewmas = slice.map(r => Number(r.ewma ?? 0));
+                      const cpus = slice.map(r => Number(r.cpu_mean ?? 0));
+                      const mems = slice.map(r => Number(r.memory_mean ?? 0));
+                      const lags = slice.map(r => Number(r.queue_lag_mean ?? 0));
 
-                    const maxLat = Math.max(...latencies, 1); const minLat = Math.min(...latencies, 0);
-                    const maxEwma = Math.max(...ewmas, 1);   const minEwma = Math.min(...ewmas, 0);
-                    const maxCpu = Math.max(...cpus, 1);     const minCpu = Math.min(...cpus, 0);
-                    const maxMem = Math.max(...mems, 1);     const minMem = Math.min(...mems, 0);
-                    const maxLag = Math.max(...lags, 1);     const minLag = Math.min(...lags, 0);
+                      const maxLat = Math.max(...latencies, 1); const minLat = Math.min(...latencies, 0);
+                      const maxEwma = Math.max(...ewmas, 1);   const minEwma = Math.min(...ewmas, 0);
+                      const maxCpu = Math.max(...cpus, 1);     const minCpu = Math.min(...cpus, 0);
+                      const maxMem = Math.max(...mems, 1);     const minMem = Math.min(...mems, 0);
+                      const maxLag = Math.max(...lags, 1);     const minLag = Math.min(...lags, 0);
 
                     // Helper function to transform values to a clean 0 - 100 range
-                    const norm = (val: number, min: number, max: number) => {
-                      if (max === min) return 50;
-                      return ((val - min) / (max - min)) * 100;
-                    };
+                      const norm = (val: number, min: number, max: number) => {
+                        if (max === min) return 50;
+                        return ((val - min) / (max - min)) * 100;
+                      };
 
-                    return slice.map((row) => ({
-                      ...row,
-                      // Keep original values for the tooltip display
-                      raw_latency: parseFloat(row.latency_mean ?? 0),
-                      raw_ewma: parseFloat(row.ewma ?? 0),
-                      raw_cpu: parseFloat(row.cpu_mean ?? 0),
-                      raw_mem: parseFloat(row.memory_mean ?? 0),
-                      raw_lag: parseFloat(row.queue_lag_mean ?? 0),
+                      return slice.map((row) => ({
+                        ...row,
+                        raw_latency: Number(row.latency_mean ?? 0),
+                        raw_ewma: Number(row.ewma ?? 0),
+                        raw_cpu: Number(row.cpu_mean ?? 0),
+                        raw_mem: Number(row.memory_mean ?? 0),
+                        raw_lag: Number(row.queue_lag_mean ?? 0),
 
-                      // Normalized plotting values passed to the Line tracks
-                      norm_latency: norm(parseFloat(row.latency_mean ?? 0), minLat, maxLat),
-                      norm_ewma: norm(parseFloat(row.ewma ?? 0), minEwma, maxEwma),
-                      norm_cpu: norm(parseFloat(row.cpu_mean ?? 0), minCpu, maxCpu),
-                      norm_mem: norm(parseFloat(row.memory_mean ?? 0), minMem, maxMem),
-                      norm_lag: norm(parseFloat(row.queue_lag_mean ?? 0), minLag, maxLag),
-                    }));
-                  })()}
+                        norm_latency: norm(Number(row.latency_mean ?? 0), minLat, maxLat),
+                        norm_ewma: norm(Number(row.ewma ?? 0), minEwma, maxEwma),
+                        norm_cpu: norm(Number(row.cpu_mean ?? 0), minCpu, maxCpu),
+                        norm_mem: norm(Number(row.memory_mean ?? 0), minMem, maxMem),
+                        norm_lag: norm(Number(row.queue_lag_mean ?? 0), minLag, maxLag),
+                      }));
+                    })()}
                   margin={{ top: 10, right: 15, left: -5, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
                   <XAxis dataKey="window_end" tickFormatter={formatXAxis} className="text-[10px] fill-muted-foreground" />
                   
                   {/* Universal scale wrapper representing relative operational bounds */}
-                  <YAxis domain={[0, 100]} className="text-[10px] fill-muted-foreground" unit="%" />
+                  <YAxis domain={[0, 100]} className="text-[10px] fill-muted-foreground" unit="m" />
                   
                   <Tooltip 
                     contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "8px" }}
@@ -204,9 +202,9 @@ function AnalyticsPage() {
                         case "EWMA Latency":
                           return [`${payload.raw_ewma.toFixed(1)} ms`, name];
                         case "CPU Utilization":
-                          return [`${payload.raw_cpu.toFixed(1)}%`, name];
+                          return [`${payload.raw_cpu.toFixed(1)}m`, name];
                         case "Memory Utilization":
-                          return [`${payload.raw_mem.toFixed(1)}%`, name];
+                          return [`${payload.raw_mem.toFixed(1)}MiB`, name];
                         case "Queue Lag":
                           return [`${payload.raw_lag.toFixed(2)} items`, name];
                         default:
@@ -219,15 +217,16 @@ function AnalyticsPage() {
                   {/* Performance Paths mapped to normalized variance variables */}
                   <Line type="monotone" dataKey="norm_latency" name="Latency (Mean)" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
                   <Line type="monotone" dataKey="norm_ewma" name="EWMA Latency" stroke="#f97316" strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls />
-                  <Line type="monotone" dataKey="norm_lag" name="Queue Lag" stroke="#eab308" strokeWidth={1.5} strokeDasharray="2 2" dot={false} connectNulls />
-                  <Line type="monotone" dataKey="norm_cpu" name="CPU Utilization" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
-                  <Line type="monotone" dataKey="norm_mem" name="Memory Utilization" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+                  <Line type="monotone" dataKey="norm_lag" name="Queue Lag (items)" stroke="#eab308" strokeWidth={1.5} strokeDasharray="2 2" dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_cpu" name="CPU Utilization " stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
+                  <Line type="monotone" dataKey="norm_mem" name="Memory Utilization " stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>)}
         {/* CHART 2: MATHEMATICAL ACCUMULATORS & WEIGHT INDEXES */}
+        {slice.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold tracking-tight">
@@ -291,12 +290,13 @@ function AnalyticsPage() {
 
             </div>
           </CardContent>
-        </Card>
+        </Card>)}
 
        {/* ======================================================================= */}
         {/* CHART 3: BOUNDED PROBABILITIES & COMPOSITE VECTORS (0.0 - 1.0)          */}
         {/* ======================================================================= */}
          {/* CHART 3: PROBABILITIES & COMPOSITE VECTORS */}
+         {slice.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold tracking-tight">
@@ -306,22 +306,21 @@ function AnalyticsPage() {
             <CardContent className="pt-4">
               <div className="h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  {/* 🛠️ FIX: CHANGED WRAPPER TO ComposedChart TO RENDER BOTH GRADIENT AREAS AND FOREGROUND LINES */}
                   <ComposedChart 
                     data={slice.map((row) => {
-                      const parsedStatistical = parseFloat(row.statistical_score ?? row.statisticalScore ?? 0);
-                      const parsedProbability = parseFloat(row.incident_probability ?? row.incidentProbability ?? 0);
-                      const parsedML = parseFloat(row.ml_score ?? row.mlScore ?? 0);
-                      const parsedFinal = parseFloat(row.final_score ?? row.finalScore ?? 0);
+                      const parsedStatistical = row.statistical_score ?? 0;
+                      const parsedProbability = row.incident_probability ?? 0;
+                      const parsedML = row.ml_score ?? 0;
+                      const parsedFinal = row.final_score ?? 0;
 
                       return {
                         ...row,
                         display_statistical: isNaN(parsedStatistical) ? 0 : parsedStatistical,
                         display_probability: isNaN(parsedProbability) ? 0 : parsedProbability,
                         display_ml: isNaN(parsedML) ? 0 : parsedML,
-                        display_final: isNaN(parsedFinal) ? 0 : parsedFinal
+                        display_final: isNaN(parsedFinal) ? 0 : parsedFinal,
                       };
-                    })} 
+                    })}
                     margin={{ top: 10, right: 15, left: -10, bottom: 5 }}
                   >
                     <defs>
@@ -391,6 +390,8 @@ function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
       </div>
     </div>
   );

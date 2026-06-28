@@ -111,12 +111,14 @@ try:
 
                 #print("got raw value of msg")
                 record = json.loads(raw_value)
-                #print(f"Message received   {record}")
+                print(f"Message received   {record}")
                 #record["timestamp"] = (pd.to_datetime(record["timestamp"]))
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], format="%d-%m-%Y %H:%M:%S")
+                input("In time")
                 record["timestamp"] = pd.to_datetime(record["timestamp"], format="mixed", dayfirst=True)
-                #print("timestamp converted")
+
+                print("timestamp converted")
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
                     print(f"Error processing message: {e}, continue with next message")
                     continue

@@ -82,6 +82,10 @@ function buildTrend(service: string): WindowMetric[] {
     const memory_mean = Math.min(1, Math.max(0.05, baseMem + noise * 0.3));
     const queue_lag_mean = Math.max(0, baseQueue + noise * baseQueue);
     const queue_lag_max = queue_lag_mean * (1.2 + rand() * 0.8);
+    const ewma =0
+    const cusum = 0
+    const persistence_score= 0
+    const incident_probability = 0
 
     const ml_score = Math.min(
       1,
@@ -115,6 +119,11 @@ function buildTrend(service: string): WindowMetric[] {
       final_score: Number(final_score.toFixed(4)),
       prediction: final_score >= 0.6 ? 1 : 0,
       priority,
+      ewma : Number(ewma.toFixed(2)),
+      cusum :  Number(ewma.toFixed(2)),
+      persistence_score : Number(ewma.toFixed(2)),
+      incident_probability : Number(ewma.toFixed(2)),
+      
     });
   }
   // Sort oldest → newest for charts.

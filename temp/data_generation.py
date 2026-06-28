@@ -13,7 +13,7 @@ import random, json, pandas as pd
 from datetime import datetime, timedelta
 
 # --- CONFIG ---
-TOTAL_RECORDS = 30000   # adjust to 30000–50000 as needed
+TOTAL_RECORDS = 20000   # adjust to 30000–50000 as needed
 CRITICAL_LIMIT = int(TOTAL_RECORDS * 0.05)
 
 REGIONS = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
@@ -168,7 +168,7 @@ def assign_status(severity):
 def assign_error(severity, service, endpoint, latency, cpu, memory, queue):
     # Success cases should never have error codes
     if severity in ["Healthy", "Normal"]:
-        return ""
+        return "ERR-000"
 
     limits = BASELINE_STANDARDS.get((service, endpoint))
     if limits:
@@ -316,8 +316,8 @@ for i in range(TOTAL_RECORDS):
         service_errors[service] += 1
 
     row = {
-        "timestamp": ts,
-        "service": service,
+        "timestamp": datetime.fromisoformat(ts).isoformat(),
+         "service": service,
         "endpoint": endpoint,
         "region": region,
         "latency_ms": f"{latency}ms",
@@ -325,7 +325,7 @@ for i in range(TOTAL_RECORDS):
         "memory_usage": f"{memory}MiB",
         "queue_lag": f"{queue}ms",
         "amount": assign_amount(service),
-        "error_code": error_code,
+        "error_code": error_code if error_code is not None else "ERR-000",
         "severity": severity,
         "status": status,
         "error_count": assign_error_count(),

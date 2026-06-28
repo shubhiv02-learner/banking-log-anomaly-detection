@@ -30,9 +30,13 @@ export interface Ticket {
   status: AlertStatus;
   created_at: string;
   updated_at: string;
-  notification_sent : boolean;
-  notification_time : string;
+  notification_sent: boolean;
+  notification_time: string | null;
+  incident_summary: JSONObject;
+  resolution: string | null;
+  preventive_action: string | null;
 }
+
 
 export interface WindowMetric {
   id: number;
@@ -56,9 +60,13 @@ export interface WindowMetric {
   ewma : number;
   cusum : number;
   persistence_score : number;
-  incident_probability : number;
-  payload_json: JSONObject
-  payload_summary : JSONObject
+  incident_probability : number; 
+  
+}
+
+export interface WindowMetricFull extends WindowMetric {
+  payload_json?: Record<string, any>[] | Record<string, any> | null;
+  payload_summary?: Record<string, any> | null;
 }
 export interface ServiceCount {
   service: string;

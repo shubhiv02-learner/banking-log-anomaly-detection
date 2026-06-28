@@ -1,5 +1,5 @@
 from sqlalchemy import func
-
+from sqlalchemy.orm import defer
 #from backend.db_models import as db_models
 from backend.db_models import Alert, WindowMetrics, Ticket
 
@@ -98,6 +98,8 @@ def get_window_metrics(
 
     return (
         db.query(WindowMetrics)
+        .options(defer(WindowMetrics.payload_json))
+        .options(defer(WindowMetrics.payload_summary))
         .order_by(WindowMetrics.window_start.desc())
         .offset(skip)
         .limit(limit)
@@ -111,6 +113,8 @@ def get_recent_window_metrics(
 
     return (
         db.query(WindowMetrics)
+        .options(defer(WindowMetrics.payload_json))
+        .options(defer(WindowMetrics.payload_summary))
         .order_by(WindowMetrics.window_start.desc())
         .limit(limit)
         .all()
@@ -124,6 +128,8 @@ def get_window_metrics_by_service(
 
     return (
         db.query(WindowMetrics)
+        .options(defer(WindowMetrics.payload_json))
+        .options(defer(WindowMetrics.payload_summary))
         .filter(WindowMetrics.service == service)
         .order_by(WindowMetrics.window_start.desc())
         .limit(limit)
@@ -137,6 +143,8 @@ def get_window_metric_by_id(
 
     return (
         db.query(WindowMetrics)
+        .options(defer(WindowMetrics.payload_json))
+        .options(defer(WindowMetrics.payload_summary))
         .filter(WindowMetrics.id == metric_id)
         .first()
     )
@@ -150,9 +158,22 @@ def get_incidents(
     
     incidents = (
         db.query(Ticket)
+        .options(defer(Ticket.incident_summary))
         .order_by(Ticket.created_at.desc())
         .offset(skip)
         .limit(limit)
+        .all()
+    )
+    print("Fetched incidents:", len(incidents))  # debug line
+    return incidents
+
+def get_incidents_by_id(db, alert_id: int):
+    
+    incidents = (
+        db.query(Ticket)
+        .filter(Alert.id == alert_id)
+        .options(defer(Ticket.incident_summary))
+        .order_by(Ticket.created_at.desc())
         .all()
     )
     print("Fetched incidents:", len(incidents))  # debug line

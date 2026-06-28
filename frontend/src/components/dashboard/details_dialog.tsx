@@ -153,7 +153,13 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
 • ML Model Score  : ${metrics?.ml_score?.toFixed(4) ?? "N/A"}
 • Final Statistical Score : ${metrics?.statistical_score?.toFixed(4) ?? "N/A"}
 • Final Weighted Score : ${metrics?.final_score?.toFixed(4) ?? "N/A"}
-• Prediction Flag : State Code [${metrics?.prediction ?? "0"}]`
+• Prediction Flag : State Code [${metrics?.prediction ?? "0"}]
+
+=== Linked Raw Telemetry Summary===
+${metrics?.payload_summary ? JSON.stringify(metrics.payload_summary, null, 2) : "None linked"}
+
+=== Linked Raw Telemetry ===
+${metrics?.payload_json ? JSON.stringify(metrics.payload_json, null, 2) : "None linked"}`
               )
             ) : (
               /* DYNAMIC INCIDENT RENDERING BLOCK */
@@ -163,7 +169,7 @@ An incident workflow state has been initialized targeting the "${SERVICE_LABELS[
 • Alert Context ID : ${item.alert_id || "None linked"}
 • Assigned Analyst  : ${item.assignee || "Unassigned (Triage Required)"}
 • Dispatch Status   : Notification sent ${item.notification_time ? formatTime(item.notification_time) : "Pending"}
-
+• Operational Summary : ${item?.incident_summary ? JSON.stringify(item.incident_summary, null, 2) : "None linked"}
 No manual engineering notes have been appended to Ticket Reference #${item.ticket_id || item.id} yet.`
             )}
           </div>
