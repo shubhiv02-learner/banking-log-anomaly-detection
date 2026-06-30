@@ -185,17 +185,31 @@ def get_window_metric(
 
     return metric
 
+@app.get(
+    "/window-metrics/details/{metric_id}",
+    response_model=schemas.WindowMetricsDetail
+)
+def get_window_metric_details_by_id(
+    metric_id: int,
+    db: Session = Depends(get_db)
+):
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "backend.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
+    metric = crud.get_window_metric_details_by_id(
+        db,
+        metric_id
     )
 
-##################INCIDENTS END POINTS#################
+    if metric is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Window metric not found"
+        )
+
+    return metric
+
+
+
+##################INCIDENTS END POINTS For dashboard #################
 #Alerts Paginated
 @app.get(
     "/tickets",
@@ -213,3 +227,61 @@ def get_incidents(
                  )
     print (incidents.__len__ )
     return incidents
+
+
+##########################################################################
+##  Add endpoint for sentinel Agent
+##########################################################################
+
+##For Incident List and details
+
+@app.get(
+    "/agent/incidents",
+    response_model=list[schemas.TicketListRes]
+    )
+def get_agent_incidents(
+    skip: int = 0,
+    limit: int = 5,
+    db: Session = Depends(get_db)
+    ):
+    incidents = crud.get_agent_incidents(
+                    db=db,
+                    skip=skip,
+                    limit=limit
+                 )
+    print (incidents.__len__ )
+    return incidents
+
+
+@app.get(
+    "/agent/incidents/details/{incident_id}",
+    response_model=schemas.TicketDetRes
+)
+def get_agent_incident_by_id(
+    incident_id: int,
+    db: Session = Depends(get_db)
+):
+
+    incident = crud.get_agent_incident_by_id(
+        db,
+        incident_id
+    )
+
+    if incident is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Incident not found"
+        )
+
+    return incident
+################## End API agent  ##############################3
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )

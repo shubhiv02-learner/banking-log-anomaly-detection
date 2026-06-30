@@ -1,4 +1,4 @@
-import type { Alert, WindowMetric,Ticket } from "./types";
+import type { Alert, WindowMetric,Ticket, WindowMetricFull } from "./types";
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
@@ -41,6 +41,8 @@ export const api = {
   serviceTrend: (service: string) =>
     http<WindowMetric[]>(`/window-metrics/service/${encodeURIComponent(service)}`),
   getWindowMetric: (id: number) => http<WindowMetric>(`/window-metrics/${id}`),
+  get_incidents_by_id: (id: number) => http<Ticket>(`/tickets/${id}`),
+  get_window_metric_details_by_id: (id: number) => http<WindowMetricFull>(`/window-metrics/details/${id}`),
 };
 
 export function serviceLabel(service: string): string {

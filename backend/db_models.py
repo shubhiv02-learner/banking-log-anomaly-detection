@@ -1,4 +1,4 @@
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 from sqlalchemy import Column, Boolean, Integer, Float, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -76,6 +76,30 @@ class WindowMetrics(Base):
         nullable=False
         )
 
+"""
+##Source of truth will remain same, so new class not required, handle in schema 
+## Pydantic Response Schema (schemas.py) — Create new schemas here what UI or Agent need
+class WindowMetricsDetails(Base):
+    __tablename__ = "window_metrics"
+    payload_summary = Column(JSONB, nullable=True)
+    payload_json = Column(JSONB, nullable=True)
+
+
+    # No __tablename__ needed here! It inherits it from WindowMetrics.
+    
+    # You must use use_existing_column=True because these columns 
+    # already exist on the parent WindowMetrics class table map.
+    payload_summary: Mapped[str] = mapped_column(
+        use_existing_column=True,
+        deferred=False  # Force it to load immediately on this specific subclass
+    )
+
+    payload_json: Mapped[dict] = mapped_column(
+        use_existing_column=True,
+        deferred=False  # Force it to load immediately on this specific subclass
+    )
+"""
+
 class Ticket(Base):
 
     __tablename__ = "incidents"
@@ -104,5 +128,5 @@ class Ticket(Base):
  # Open, Acknowledged, Resolved
     status = Column(
         String,
-        default="OPEN"
-    )
+        default="OPEN")
+

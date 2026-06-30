@@ -71,6 +71,8 @@ class WindowMetricResponse(BaseModel):
     cusum : float
     persistence_score : float
     incident_probability : float
+    payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
+    payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
 
     #  FIX: Changed from JSONB to primitive Python types
     # (Using Union allows your JSON to be either an object/dictionary or an array/list)
@@ -80,12 +82,19 @@ class WindowMetricResponse(BaseModel):
 
 
     class Config:
-        from_attributes = True  
+        from_attributes = True
+        
 
-class WindowMetricsDetail(WindowMetricResponse):
-    payload_json: dict | None
-    payload_summary: str | None
-
+class WindowMetricsDetail(BaseModel):
+    id: int
+    payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
+    payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
+    # This configuration is required for Pydantic v2 to map SQLAlchemy outputs safely
+    #model_config = ConfigDict(from_attributes=True) 
+    class Config:
+        from_attributes = True
+    
+      
 class TicketResponse(BaseModel):
 
     id: int
@@ -104,3 +113,25 @@ class TicketResponse(BaseModel):
     resolution : Optional[str] = None
     class Config:
         from_attributes = True
+
+class TicketListRes(BaseModel):
+   
+    ticket_id: str
+    service:str
+    assignee : str
+    priority: str
+    status: str
+    class Config:
+        from_attributes = True
+
+class TicketDetRes(BaseModel):
+    ticket_id: str
+    service:str
+    priority: str
+    status: str
+    created_at: datetime
+    notification_time : Optional[datetime] = None
+    incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
+    class Config:
+        from_attributes = True
+

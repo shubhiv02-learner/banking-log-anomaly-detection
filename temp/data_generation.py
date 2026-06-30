@@ -268,7 +268,7 @@ service_severity_counts = {s: {sev:0 for sev in severity_distribution.keys()}
 
 for i in range(TOTAL_RECORDS):
     severity_counts = {sev: 0 for sev in TARGET_DISTRIBUTION.keys()}
-    ts = (start_time + timedelta(seconds=i//5)).strftime("%Y-%m-%d %H:%M:%S")
+    ts = (start_time + timedelta(seconds=i//5)*10).strftime("%Y-%m-%d %H:%M:%S")
     client_id, machine_id = pick_client_machine()
     region = random.choice(REGIONS)
 

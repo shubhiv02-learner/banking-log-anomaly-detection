@@ -14,7 +14,7 @@ import { StatusPill } from "./status-pill";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import { formatDistanceToNow } from "date-fns";
 import { api } from "@/lib/api/client"; // 👈 IMPORT THE API INSTANCE
-import type { Ticket, Alert, WindowMetric } from "@/lib/api/types";
+import type { Ticket, Alert, WindowMetric, WindowMetricFull } from "@/lib/api/types";
 
 type ExtensibleItem = (Alert | Ticket) & {
   notification_time?: string;
@@ -32,7 +32,7 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [metrics, setMetrics] = useState<WindowMetric | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
+/*
   useEffect(() => {
     // Only fetch metrics if the dialog is open, it's an alert, and we have a target id
     if (isOpen && isAlert && item.window_metric_id) {
@@ -48,7 +48,48 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
         .finally(() => setIsLoading(false));
     }
   }, [isOpen, isAlert, item.window_metric_id]);
+*/
+useEffect(() => {
+  // Only fetch if the dialog is open, it's an alert, and we have a target id
+  if (isOpen && isAlert && item.window_metric_id) {
+    setIsLoading(true);
 
+    // Fire both API requests in parallel
+    Promise.all([
+      api.listWindowMetrics(),
+      api.get_window_metric_details_by_id(item.window_metric_id)
+    ])
+      .then(([listData, detailsData]) => {
+        // 1. Original Logic: Process the list data
+        const metricList: WindowMetric[] = Array.isArray(listData) 
+          ? listData 
+          : (listData as any)?.data ?? [];
+        
+        // Find the matched item from the list
+        const matchedMetric = metricList.find((m) => m.id === item.window_metric_id);
+
+        // 2. New Logic: Combine the base list item with the rich payload details
+        if (matchedMetric && detailsData) {
+          const fullMetricData = {
+            ...matchedMetric,
+            ...detailsData // Overwrites / adds payload_json and payload_summary
+          };
+          setMetrics(fullMetricData);
+        } else {
+          // Fallback to just the list item if details call returned empty
+          setMetrics(matchedMetric || null);
+        }
+
+        // Note: If you have a separate state for the full dropdown list 
+        // in your dialog, you can also call its setter here:
+        // setAllMetricsList(metricList);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch combined window metrics:", err);
+      })
+      .finally(() => setIsLoading(false));
+  }
+}, [isOpen, isAlert, item.window_metric_id]);
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return "N/A";
     try {
