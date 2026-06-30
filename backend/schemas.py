@@ -124,14 +124,15 @@ class TicketListRes(BaseModel):
     class Config:
         from_attributes = True
 
+#incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
 class TicketDetRes(BaseModel):
     ticket_id: str
     service:str
     priority: str
     status: str
-    created_at: datetime
+    assignee: str | None = None
     notification_time : Optional[datetime] = None
-    incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
+    incident_summary: dict | None = None
     class Config:
         from_attributes = True
 
