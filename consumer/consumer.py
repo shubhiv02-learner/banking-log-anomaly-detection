@@ -111,14 +111,14 @@ try:
 
                 #print("got raw value of msg")
                 record = json.loads(raw_value)
-                print(f"Message received   {record}")
+                #print(f"Message received   {record}")
                 #record["timestamp"] = (pd.to_datetime(record["timestamp"]))
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], dayfirst=True)
                 #record["timestamp"] = pd.to_datetime(record["timestamp"], format="%d-%m-%Y %H:%M:%S")
-                input("In time")
+                #input("In time")
                 record["timestamp"] = pd.to_datetime(record["timestamp"], format="mixed", dayfirst=True)
 
-                print("timestamp converted")
+                #print("timestamp converted")
             except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError) as e:
                     print(f"Error processing message: {e}, continue with next message")
                     continue
@@ -210,7 +210,7 @@ try:
                         payload_summary, payload_json = build_payload_details(records_list, ERROR_MAPPING)
 
                         raw_errors = payload_summary["top_errors"]
-                        top_errors = [e if str(e).startswith("ERR") else "ERR-000" for e in raw_errors]
+                        top_errors = [e if str(e).startswith("ERR") else "ERR-UNK" for e in raw_errors]
                         
                         # Enrich metrics
                         metrics_details = enrich_metrics_details(top_errors, ERROR_MAPPING)

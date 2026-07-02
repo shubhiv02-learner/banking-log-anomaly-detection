@@ -124,6 +124,11 @@ class TicketListRes(BaseModel):
     class Config:
         from_attributes = True
 
+class TicketListResponse(BaseModel):
+    total: int
+    latest_count: int
+    incidents: list[TicketListRes]
+
 #incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
 class TicketDetRes(BaseModel):
     ticket_id: str

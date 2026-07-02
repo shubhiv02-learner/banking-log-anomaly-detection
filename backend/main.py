@@ -237,19 +237,19 @@ def get_incidents(
 
 @app.get(
     "/agent/incidents",
-    response_model=list[schemas.TicketListRes]
-    )
+    response_model=schemas.TicketListResponse
+)
 def get_agent_incidents(
     skip: int = 0,
     limit: int = 5,
     db: Session = Depends(get_db)
-    ):
+):
     incidents = crud.get_agent_incidents(
-                    db=db,
-                    skip=skip,
-                    limit=limit
-                 )
-    print (incidents.__len__ )
+        db=db,
+        skip=skip,
+        limit=limit
+    )
+    print(incidents)
     return incidents
 
 

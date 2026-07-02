@@ -228,22 +228,33 @@ def get_incidents_by_id(db, alert_id: int):
 # By Id, its just last 4 digit
 ################################################################
 
+from sqlalchemy import func
+
 def get_agent_incidents(
-        db,
-        skip: int = 0,
-        limit: int = 5
-    ):
-    
+    db,
+    skip: int = 0,
+    limit: int = 5
+):
+    total = (
+        db.query(func.count(Ticket.ticket_id))
+        .filter(func.upper(Ticket.status) == "OPEN")
+        .scalar()
+    )
+
     incidents = (
         db.query(Ticket)
+        .filter(func.upper(Ticket.status) == "OPEN")
         .order_by(Ticket.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-    print("Fetched incidents:", len(incidents))  # debug line
-    return incidents
-
+    print("total:", total)
+    return {
+        "total": total,
+        "latest_count": len(incidents),
+        "incidents": incidents
+    }
 
 def get_agent_incident_by_id(db, tkt_id: int):
     
