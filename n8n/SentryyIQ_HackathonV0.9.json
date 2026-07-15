@@ -1,0 +1,973 @@
+{
+  "name": "SentryyIQ_HackathonV0.9",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('TT_Sent_Req').first().json.message.text }}",
+        "options": {
+          "systemMessage": "You are the SentryyIQ Operations Assistant.\n\nUse the available tools whenever they are relevant to answer the user's request and - Never return raw JSON unless requested.\n\n#For Summary of incidents by Severity\nIf user ask for total incidents or summary of incidents by severity or dashboard summary by severity\n- Retrieve using tool \"summarize_incidents_by_severity\"\n\n\n#For Summary of incidents by Service\n- Retrieve using tool \"summarize_incidents_by_service\"\nIf user ask for total incidents/summary of incidents by severity\n\n#Dashboard Summary\n## Role and Objective\nYou are a dashboard summary assistant. Your job is to compile a complete incident report.\n\n## Execution Instructions\n1. Run the tool \"summarize_incidents_by_severity\" first.\n2. WAIT for the output of that tool completely.\n3. Next, run the tool \"summarize_incidents_by_service\".\n4. Combine the data and write the summary.\nDo NOT call these tools at the same time.\n\n##Output Format\n### Dashboard Summary\n[Provide a clear, concise summary of the combined data here]\ngenerate Telegram-friendly plain text.\n-----------------------\n#For Incident List:\n- Retrieve the incident list using the appropriate tool.\n- Summarize incidents in a clear, concise format.\n- Show critical/high priority incidents first.\n- Highlight affected service, severity, status, assignee and business impact when available.\n\n\n#For Incident Details or Investigate Incident:\nIf user ask details of incident or ask to investigate incident, Show him Incident details.\nWhen presenting incident details:\n\n1. Explain the incident in simple language.\n2a. Show Service, Severity, Current Assignee \n2b. Summarize:\n   - Top Issue\n   - Top Regions impacted\n   - Top Clients and Host impacted\n   - Business impact\n   - Total transaction Value\n   - Record Count\n   - Current status\n3.  Include Resolution and preventive action if available\n\n4. Determine the incident status before generating the response.\n\n5. If status is OPEN or ASSIGNED:\n   - Include a section titled \"Recommended Next Steps\".\n   - Use ONLY the retrieved runbook or incident data.\n   - Never invent troubleshooting steps.\n\n6. If status is RESOLVED or CLOSED:\n   - DO NOT include a \"Recommended Next Steps\" section.\n   - DO NOT suggest further investigation or actions.\n   - End the response after the incident summary.\n \n#For Alert Details or Investigation Details of Alert:\nIf user ask details of alert or ask for investigation details of alert, Show him Alert details.\nWhen presenting Alert details:\n\n1. Explain the alert in simple language.\n2. Show details in following format\n\nAlert Details:\n===============================================\nAlert Id, Ticket ID, Service, Priority and Status \n\nWindow Details \n------------------------------------------\nWindow Start :                Window End:\n\nDetection Scores\n---------------------------------------------------------------------------------\nFinal Score :       ML Score:  Statistical Score:\n\nStatistical Signals\n----------------------------------------------------------------------------------\nEWMA:           CUSUM:     Persistence Score:            Incident Probability:\n\nLog Telemetry Summary\n-----------------------------------------------------------------------------------\nRecord Count:    Error Count\nLatency :   Mean:    Max      Std\nCPU:   Mean:   Max\nMemory Mean :\nQueue Lag:   Mean:   Max\n\nNeed deeper investigation?\nRequest **Raw Telemetry** to generate a downloadable document containing the underlying log records. *(CSV export : Feature coming soon.)*\n\n#When Incident List or Incident Details or Alert details data is provided:\n- Summarize it clearly in simple language. Tell user about total open count and list top incidents\n- Present incidents in a clean, readable format.\n- Highlight critical/high priority incidents first.\n- Mention affected service, status, assignee and key impact when available.\n- Never return raw JSON unless requested.\n----------------------\n#If user ask for raw telemetry or forensic details of a specific alert\n-Retrieve information using tool \"Get_Alert_Forensic\"\n\n- Formatting Rules:\n1.  Display the fetched records in a vertical, chat-friendly format. \n2. If no of records fetched more than 5 than summarize the information received and list only top 5 records\n3. if record count in result is more than 2500, say: **This incident contains \"record_count\" raw telemetry records. To ensure responsive analysis during the demo, forensic AI currently analyzes incidents with up to 2500 telemetry records. For large number of records new feature to download file to be added for easy analysis (coming soon...)\nDo not use a wide Markdown table.\n------------------------------------------------------------\n#For Incident Assignment History or List or Details :\n-Retrieve information using tool \"Incident_Assignment_History\"\nusing ticket id provided or incident no. \n- If ticket id or incident no is not provided, request to provide that and offer help to first see list of open incidents\n- Formatting Rules: Display the complete assignment history for the given incident in a vertical, chat-friendly format. Do not use a wide Markdown table.\n\n\n##Format Requirements\n\nSort all assignment records by Assignment Time in ascending order (oldest first).\nDisplay each assignment as a separate block in the following order:\nAssignment #<n>\nAction       : <action>\nTime          : <DD MMM YYYY, HH:mm>\nFrom          : <Previous Assignee>\nTo            : <Assigned To>\nAssigned By   : <Assigned By>\nRemarks       : <Remarks or —>\n\nSeparate each assignment block with a horizontal divider (---).\nAlign the field names for easy readability.\nReplace missing or empty values with —.\nDo not omit any assignment records.\n\nAfter the assignment history, display the following in this exact order:\n\nCurrent Assignee\nTotal Assignments\nFirst Assignment Time\nLatest Assignment Time\n\n##Summary\n\nProvide a concise summary in 2–4 bullet points.\nDescribe the assignment flow from the initial assignee to the current assignee.\nMention any repeated reassignments if applicable.\nHighlight the final/current assignee.\nIf the remarks indicate the reason for reassignment, briefly mention it.\nDo not repeat the full history in the summary.\n\n##Formatting\n\nUse bold only for section headings and the Current Assignee.\nKeep the output compact and suitable for chat.\nDo not include introductory or concluding text outside the requested format.\nDo not include any explanatory text before the table.\n------------------------------\n\n#  Assign Incident\n\nUse the \"Post_Assign_Incident\" tool when the user wants to assign or reassign an incident.\n\nBefore calling the tool:\n\n- Extract the assignee (\"assigned_to\").\n- Extract any remarks if provided.\n\nIf the assignee is missing, ask:\n\"Who would you like to assign the incident to?\"\n\nIf remarks are missing, ask:\n\"Please provide a brief remark for the assignment.\"\n\nDo not call the tool until both the assignee and remarks have been provided.\n\nThe tool automatically performs the ASSIGNED action. Do not infer or generate any other action.\n\nOnce all required information is available, call the tool and respond only with the tool's result.\n\n-------------------------\n# Resolve Incident\nUse the \"Post_Resolve_Incident\" tool when the user wants to mark an incident as resolved.\n\nBefore calling the tool:\n\n- Extract any remarks provided by the user.\n\nIf remarks are missing, ask:\n\"Please provide a brief remark for resolving the incident.\"\n\nDo not call the tool until remarks have been provided.\n\nThe tool automatically performs the RESOLVED action. Do not infer or generate any other action.\n\nOnce all required information is available, call the tool and respond only with the tool's result.\n------------------------------\n# Close Incident\n##Before calling the tool: Ask User to politely to Specify information in given format for closure of incident\n\nClose incident with no :\nClosure Remark:\nPreventive Action:\n\nNever call the \"Post_Close_Incident\" until closure remarks have been collected.\nThe tool \"\"Post_Close_Incident\" automatically performs the CLOSED action. Do not infer or generate any other action.\n\nOnce all required information is available, call the tool and respond only with the tool's result.\n----------------------------------------------------\n# Users List\nShow list of Users properly formatted in case request for User list or details like email, role is asked using tool \"Get Users List\". \n  \n#For user queries - \nRules for data fetching\n======\nif no live data tool is available to answer queries. \n1. Search the entire document for user query. \n2. If relevant information is more than one place in document collect it,\n3. Summarize the information properly.\n4. Never show internal Document id, references to User\n##1. On errors/issues, previous issues answer using \"Get Runbook tool\"\n##2. On terminology use \"Get Terminology\" tool. \n##3. On schema/table related queries use \"Get Schema Details\" tool. Show only columns given in tool description\n##4. For all Service Level Agreement (SLA) related questions and Multi-Window Error Budget Policy\n###RULES for SLA queries\n1. ALWAYS invoke the \"Get SLA details\" tool.\n2. Treat the tool output as the authoritative source.\n3. Do not answer that information is unavailable unless the tool returns no matching content.\n4. If the requested information exists outside the SLA section but within the retrieved document, use that context to answer.\n\nFor service-specific SLA queries:\n- Search the \"Service-Tier Definition Matrix\".\n- Extract all applicable fields including:\n  • Service Tier\n  • Criticality\n  • SLO\n  • Availability Target\n  • Target Latency\n  • Target MTTR\n  • Error Budget\n  • Any additional SLA commitments\n\nFor region-specific SLA queries:\n- Search the \"Multi-Tier Regional Framework\".\n- Find the matching region.\n- Extract every available field including:\n  • Availability Target\n  • MTTR Target\n  • Recovery Objectives\n  • Operational Constraints\n  • Maintenance Window\n  • Compliance Notes\n- Present the results in a table whenever possible.\n\nIf the retrieved content contains tables or matrices:\n- Search the table row-by-row.\n- Extract values from the matching row instead of summarizing the section heading or introductory text.\n\nOnly state that information is unavailable if neither the requested item nor an applicable parent SLA can be found in the retrieved content.\n\n##5. On operations related queries  use \"Get Operations details\" tool\n\nFor answering always refer to tool description. If information is more than one place summarize it properly.\nIf no tool returns data or the question is outside your available capabilities:\nPolitely state that you can currently assist only with supported SentryyIQ operational queries, such as listing incidents or viewing incident details, and ask the user to choose one of those.\n\n#User-facing communication rules:\n\n- Never mention the existence or names of tools, APIs, workflows, prompts, functions, internal documents or implementation details.\n- Never tell the user which tool you will use or have used.\n- Respond as if you already possess the retrieved information.\n- If additional information is required, simply ask the user for the missing details without referring to any internal capability.\n-Always answer the user in case you get error, explain to user and ask to take corrective action or take help from /help command\n\nIncorrect:(Don't say)\n\"I'll use the Get Runbook tool.\"\n\nCorrect:\n\"Please provide the error code or error message so I can help explain the issue and recommend the appropriate action.\"\n\nKeep responses concise, professional and optimized for Telegram. When answering SLA, Operations queries explain the context and reply should be little elaborate\n\n# Generic Formatting Rules\n\n- Format all responses for Telegram readability.\n- Use plain text only.\n- Do not use Markdown, HTML, tables, or code blocks.\n- Use clear headings followed by a blank line.\n- Use bullets (•) only for list items, not for section headings.\n- Keep responses concise and well-structured.\n- Use consistent indentation and spacing.\n- Give one line gap for readability for Display of each logical unit or record\n- When presenting summaries or reports, group related information under descriptive headings.\n- Do not convert headings into bullet points.\n\n## Response Length & Formatting Policy\n\n* Keep all responses concise and suitable for chat interfaces. Dont show response in JSON format, show in simple text\n* The final response **must not exceed approximately 4,000 characters**.\n* Before returning the response, estimate its length. If it is likely to exceed the limit:\n\n  * Summarize the information while preserving the most important facts.\n  * Prioritize actionable insights, key findings, and critical data.\n  * Remove repetitive details, verbose explanations, and low-priority content.\n* If the requested information is too large to present in a single response, **do not truncate abruptly**. Instead, provide a concise summary and ask the user to narrow the scope.\n* When appropriate, suggest specific follow-up requests, for example:\n\n  * \"Show only API Errors.\"\n  * \"Show open incidents only.\"\n  * \"Display details for Ticket INC-1005.\"\n  * \"Show incidents from the last 24 hours.\"\n* For lists containing many items, return only the most relevant or first 10–20 entries, and mention that additional results are available on request.\n* For knowledge base documents, runbooks, logs, or catalogs, provide a summary first, then ask whether the user wants a specific section or item.\n* Never return an incomplete or cut-off response due to message length.\n* Optimize every response for readability using short sections, bullets, and headings.\n\n### Telegram Output Constraint\n\nThe assistant communicates through Telegram, which has a maximum message size of approximately 4,096 characters.\n\nBefore sending the final response:\n\n1. Estimate the response length.\n2. If it is likely to exceed the limit, automatically summarize it.\n3. If summarization would omit important details, present a brief summary and ask the user to refine or narrow the request instead of returning an oversized response.\n4. Never generate a response that exceeds Telegram's message limit.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        512
+      ],
+      "id": "e4a3d054-49da-4623-8f3f-466b1591ee07",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -592,
+        576
+      ],
+      "id": "e699ab53-d541-4138-96ad-3c58763d7869",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "SentinelIQ_bot",
+        "contextWindowLength": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -464,
+        592
+      ],
+      "id": "c60fe319-037d-49a9-b0ec-0128c3a1b6cd",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('TT_Sent_Req').item.json.message.chat.id }}",
+        "text": "👋 Welcome to **SentryyIQ AI Operations Assistant!**\n\nYour intelligent copilot for live incident management and IT operations.\n\n**How would you like to start?**\n\n📡 **1. Query Live Operations**\nTry asking:\n\n* \"Show open incidents\"\n* \"Give me a dashboard summary\"\n\n🛠️ **2. Manage Incidents**\nTry asking:\n\n* \"Assign INC-1001 to Rahul Sharma\"\n* \"Resolve INC-1001\"\n* \"Close INC-1001\"\n\n📘 **3. Search the Knowledge Base**\nTry asking:\n\n* \"What is the incident closure process?\"\n* \"Tell me the SLA for payment-api\"\n\n⌨️ **Quick Commands**\n`/help` • `/regions` • `/services`\n\n💡 **Tip:** Ask one request at a time for the most accurate results.\n\nWhat are we monitoring today?\n 🚀",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b15d5bc0-6982-4bf3-9d4d-76f991f66635",
+      "name": "Send Welcome Msg",
+      "webhookId": "8d72f364-e087-4876-9498-6e43ee8dc034",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "98dce9ed-3be9-4a05-a75a-9d3ac634d78a",
+                    "leftValue": "/start",
+                    "rightValue": "={{ $json.message.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "29c99ce3-c836-4905-803d-2390099f907d",
+                    "leftValue": "/help",
+                    "rightValue": "={{ $json.message.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "61aa858c-13aa-4ddc-80d1-44119e845050",
+                    "leftValue": "/regions",
+                    "rightValue": "={{ $json.message.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "77d6a435-4a00-43d6-8c96-ec145e98f140",
+                    "leftValue": "/services",
+                    "rightValue": "={{ $json.message.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        384
+      ],
+      "id": "89b3023c-70ed-4919-af0b-a792ef9c6ed9",
+      "name": "TT_Req_Switch"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('TT_Sent_Req').item.json.message.chat.id }}",
+        "text": "🤖 **SentryyIQ AI Operations Assistant**\n\nI can assist you with both **live operational data** and **SentryyIQ documentation**  \n📡 **Live Operations**\nRetrieve live operational information such as:\n• Dashboard Summary\n       •Summary of incidents by service\n       •Summary of incidents by severity\n• Open Incidents\n• Incident Details\n• List Users\n• Incident Workflow    \n        • Assign Incident\n        • Assignment History\n        • Resolve incident\n        • Close Incident\n        • Reopening of Close Incident *(coming soon)*\n• Service Health *(coming soon)*\n• Alert Management *(coming soon)*\n\nExamples:\n--------------\n• Show open incidents\n• List critical incidents\n• Tell me about INC-20260626-3110\n• Show incident 3110\n---\n📘 **Knowledge Base**\nAsk about:\n• SLA & Availability\n• Operations Guide & Operational Best Practices\n• Runbooks\n• Error Catalog\n• Architecture and Technical Design *(WIP)*\n• Incident Lifecycle\n• Terminology\n\nExamples:\n• What is the incident closure process?\n• Explain the payment-api SLA.\n• Explain what details are stored for incident in system to track issue\n• How does system detect anomalies?\n• Show the authentication runbook.\n• Give me details on ERR-209 from run book to help solve the issue\n• What is service in system\n---\n⌨️ **Available Commands**\n/start – Welcome message\n/help – Display help and show available options to user\n/regions – Supported regions\n/services – Monitored services\n---\n💡 **Best Practice**\nFor the most accurate results, ask **one request type at a time**.\nExamples:\n\n✅ Show open incidents\n✅ Explain the incident closure process\nInstead of combining multiple requests in one message.\n---\nHappy Monitoring! 🚀\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        144
+      ],
+      "id": "32e2cdc5-514e-456b-b69f-824f5d16b27c",
+      "name": "Send Help Msg",
+      "webhookId": "5e3877b2-35c5-4b45-9104-1608021d16ae",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('TT_Sent_Req').item.json.message.chat.id }}",
+        "text": "**SentinelIQ Supported Deployment Regions**\n\nThe following production regions are currently monitored by SentinelIQ:\n\n\n• us-east-1\n• us-west-2\n• eu-central-1\n• eu-west-1\n• ap-south-1\n• ap-southeast-1\n\n **Try asking:**\n• What is the SLA for ap-south-1?\n• Which services are monitored in us-east-1?\n• Explain region-wise monitoring.\n\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        96
+      ],
+      "id": "c01be99e-6d6e-4848-a6b5-964c90a996be",
+      "name": "Send Regions Msg",
+      "webhookId": "98573c1a-1258-4ea9-8fde-b6dd2c522589",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool when the user asks to list, show, get, display, summarize, view, check or retrieve incidents, active incidents, open incidents, critical incidents or incident summary.",
+        "url": "https://sentryyiq-backend-hackathon.onrender.com/agent/incidents?skip=0&limit=5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -656,
+        736
+      ],
+      "id": "40eedf23-d3a2-42c3-97d4-36b082f64688",
+      "name": "Incidents list",
+      "notesInFlow": true,
+      "notes": "SentryyIQ API\n\nPurpose:\nRetrieves all open incidents.\n\nEndpoint:\nGET /agent/incidents\n\nReturns:\n- Incident ID\n- Service\n- Priority\n- Status\n- Summary\n\nUsed by:\nAI Operations Assistant"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool when the user asks for details of a specific incident. If the user does not provide an Incident ID, first use the Incident List tool to retrieve the available incidents, identify the relevant Incident ID based on the user's request, and then call this tool using that Incident ID.",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/incidents/details/{{ $('TT_Sent_Req').first().json.message.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -384,
+        656
+      ],
+      "id": "081dc516-9ce0-479b-b5bb-5fb52d1fb8e3",
+      "name": "Get Incident details"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get a Runbook, answer queries of errors using this tool. If data not available inform user details yet to be uploaded and tell in short which errors you can describe",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1o6Gy-sWH7Jw_rNlZp9w37hFNwk7jh_CXDv4VGHVkTpg/edit?tab=t.0#heading=h.fgi96d6v5nk8"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        80,
+        768
+      ],
+      "id": "eb7012a6-bcfc-4a4e-9169-595f34f7d777",
+      "name": "Get Runbook",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "wZTnlmeBP5qoILqB",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Tool can get Terminology information about the SentinelIQ (incident, alerts etc) system only. Refer to headings in document for same. If details not available in tool asked by  user,  inform user that information is out of scope for me and tell in short what you can explain",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1PiqCuoR5wC6ZYV7Y1P5xNCA-3OzPd0jrqYLFKw1elLM/edit?tab=t.0#heading=h.5m485mg4mnt9"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        192,
+        832
+      ],
+      "id": "5b29cdf6-078f-4db8-94ed-d57e374d5a77",
+      "name": "Get Terminology",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "wZTnlmeBP5qoILqB",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get row(s) in sheet in Google Sheets and list Table Name\t,Logical Group, Primary Purpose, Key Columns,\tBusiness Role\tand Relationships only no other columns",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1oHqN5akKZnPMsLy0ixj-K5omA_kr5CNURvUbrW1EAlw/edit?gid=2111237012#gid=2111237012",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Table 1",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        768
+      ],
+      "id": "eb06092f-028b-456f-bc79-bfa0013e5801",
+      "name": "Get Schema Details",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Wq1321YR2HKMunD3",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://sentryyiq-backend-hackathon.onrender.com/agent/users",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -288,
+        704
+      ],
+      "id": "e563a646-4cfd-4001-a421-4624a00f2fb3",
+      "name": "Get Users List"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Get overall count/summary of open incidents based on severity",
+        "url": "https://sentryyiq-backend-hackathon.onrender.com/dashboard/summary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -96,
+        800
+      ],
+      "id": "55a15fa4-cdf1-4ba9-bf2f-e971e0b09ce2",
+      "name": "summarize_incidents_by_severity"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Get overall count/summary of open incidents based on service",
+        "url": "https://sentryyiq-backend-hackathon.onrender.com/analytics/services",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -128,
+        672
+      ],
+      "id": "e02e7677-6dba-4d73-ad92-7701231a8386",
+      "name": "summarize_incidents_by_service"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool when the user asks to list, show, get, display, details or history of assignment \nor List assignment history or details of incident assignment",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/incidents/assignments/{{ $('TT_Sent_Req').first().json.message.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -16,
+        880
+      ],
+      "id": "d837e338-a02c-437b-82a4-a9aa7ea71c95",
+      "name": "Incident_Assignment_History",
+      "notesInFlow": true,
+      "notes": "SentryyIQ API\n\nPurpose:\nRetrieves history of assignment incident\n\nEndpoint:\nGET /agent/incidents/assignments/{}\nReturns\n-Previous Assignee\n-Assigned To\n- Assigned Time\n-Remarks\n\n\n\nUsed by:\nAI Operations Assistant"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('TT_Sent_Req').item.json.message.chat.id }}",
+        "text": "**SentinelIQ Supported Services**\n\nThe following services are currently monitored by SentinelIQ:\n\n• portfolio-service\n• trading-engine\n• auth-service\n• notification-service\n• payment-api\n• investment-engine\n• fraud-detectionap-southeast-1\n\n **Try asking:**\n• What is the SLA for payment-api?\n• Which services are monitored in us-east-1?\n• Show total incidents by service",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        336
+      ],
+      "id": "9cdd9810-2d20-419b-bf6b-fa910b992495",
+      "name": "Send Services Msg",
+      "webhookId": "98573c1a-1258-4ea9-8fde-b6dd2c522589",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Tool can get Service Level agreement (SLA) information about the SentryyIQ system only. \n1. E.g For SLA regarding service refer to \"Service-Tier Definition Matrix\" and pick all relevant details. Include information of SLO, Target Latency, Target MTTR, criticality of service and which tier it belongs to.\n2. For region related queries pick all relevant information from \"Multi-Tier Regional Framework\" like Availability Target, MTTR target, Operational constraints\nSimilarly pick information relevant to the user query \n\nRefer to headings in document for same. If details not available in tool asked by  user,  inform user that information is out of scope for me and tell in short what you can explain",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1u39leBQK8VTI6ny2yosYRYrsE2UgQvb-iTWWxn6PRhg/edit?tab=t.0"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        352,
+        896
+      ],
+      "id": "976677d2-d4ea-429a-9b80-b83a0b37bf49",
+      "name": "Get SLA details",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "wZTnlmeBP5qoILqB",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -400,
+        416
+      ],
+      "id": "5237ede0-f4b1-4824-93f2-b4d51beaf82e",
+      "name": "TT_Sent_Req",
+      "webhookId": "bad42eda-f186-425b-9929-40b25bc0b7ce",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('TT_Sent_Req').first().json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        384
+      ],
+      "id": "a800f107-a23f-40a5-9789-9d88a056ab43",
+      "name": "SentryyIQ Response",
+      "webhookId": "436e02ae-fe15-4447-bca8-a79140b88397",
+      "credentials": {
+        "telegramApi": {
+          "id": "9MlqvjCxaI7C6TTK",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Tool can get Operations information about the SentinelIQ architectural information and incident closure lifecycle , information flow etc.. Refer to headings in document for same. If details not available in tool asked by  user,  inform user that information is out of scope for me and tell in short what you can explain",
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/1x0BmAMFZ8Vv3ha_FF_dbWTgDX9cmcqa_uZqzaovWnAk/edit?tab=t.0"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        464,
+        1008
+      ],
+      "id": "bc23ba66-5618-4210-ad44-7de27b53aa21",
+      "name": "Get Operations details",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "wZTnlmeBP5qoILqB",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool if user request/ask to close incident. Before invoking this tool, ensure you have collected:\n\nticket_id (required)\nclosure remarks (required)\npreventive_action (optional, use an empty string if the user has none)\nDo not call this tool until the required information has been collected.",
+        "method": "POST",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/incidents/assign",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ticket_details",
+              "value": "={{ $('TT_Sent_Req').first().json.message.text }}"
+            },
+            {
+              "name": "remarks",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `Extract Remarks from message while assigning`, 'string') }}"
+            },
+            {
+              "name": "action",
+              "value": "CLOSED"
+            },
+            {
+              "name": "=prevt_remarks",
+              "value": "Preventive action given by user"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -240,
+        864
+      ],
+      "id": "de16c45b-b7fe-413a-96a7-2a72bf5b1479",
+      "name": "Post_Close_Incident"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool if user request/ask to assign, reassign incident with ticked details ",
+        "method": "POST",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/incidents/assign",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ticket_details",
+              "value": "={{ $('TT_Sent_Req').first().json.message.text }}"
+            },
+            {
+              "name": "assigned_to",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `Extract Name from message to whom request is assigned`, 'string') }}"
+            },
+            {
+              "name": "remarks",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `Extract Remarks from message while assigning`, 'string') }}"
+            },
+            {
+              "name": "action",
+              "value": "ASSIGNED"
+            },
+            {
+              "name": "prevt_remarks",
+              "value": "''"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -528,
+        848
+      ],
+      "id": "b7c2a413-a975-47c8-b76c-80adb38b2117",
+      "name": "Post_Assign_Incident"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool if user request/ask to resolve incident with ticked details and remarks",
+        "method": "POST",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/incidents/assign",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ticket_details",
+              "value": "={{ $('TT_Sent_Req').first().json.message.text }}"
+            },
+            {
+              "name": "remarks",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `Extract Remarks from message while assigning`, 'string') }}"
+            },
+            {
+              "name": "action",
+              "value": "RESOLVED"
+            },
+            {
+              "name": "prevt_remarks",
+              "value": "''"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -400,
+        880
+      ],
+      "id": "aa6ffc94-9fb4-473a-8c3b-440cd0aa8619",
+      "name": "Post_Resolve_Incident"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.output || \"\";\n//let text = \"I can provide information, • Availability Target: 99.95%  Target MTTR: less than 12 minutes\" || \"\";\n\n// Remove bold (**text**)\ntext = text.replace(/\\*\\*(.*?)\\*\\*/g, \"$1\");\n\n// Remove italic (*text*)\ntext = text.replace(/\\*(.*?)\\*/g, \"$1\");\n\n// Remove inline code\ntext = text.replace(/`([^`]*)`/g, \"$1\");\n\n// Remove headings\ntext = text.replace(/^#+\\s*/gm, \"\");\n\n// Convert markdown bullets\ntext = text.replace(/^\\s*[-*]\\s+/gm, \"• \");\n\n// Remove links [text](url)\ntext = text.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, \"$1\");\n\ntext = text\n  .replace(/&/g, \"&amp;\")\n  .replace(/</g, \"&lt;\")\n  .replace(/>/g, \"&gt;\");\n\n\nreturn [{\n  json: {\n    text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        400
+      ],
+      "id": "3b6cf5c3-8f13-4a59-bd45-797f72ffd153",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool when the user asks for details of a specific alert. If the user does not provide an Incident ID, first use the Incidents List tool to retrieve the available incidents, identify the relevant Incident ID based on the user's request, and then call this tool using that Incident ID.",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/alerts/details/{{ $('TT_Sent_Req').first().json.message.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -816,
+        704
+      ],
+      "id": "78b4ac5f-b654-43a4-aeaa-1be9d7775f71",
+      "name": "Get Alert Details"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool when the user asks any query related to raw telemetry or forensic details for alert or incident id. \nDon't try to match information with incident id as its raw data, only summarize the data received.\nIf no details found then prompt user to  first use the Incident List tool to retrieve the available incidents, identify the relevant Incident ID and fetch relevant details\n\nUse this tool ONLY to retrieve raw telemetry or associated forensic details requested by the user for alert or incident\n\nInput:\n- alert_id or ticket id (3-4 digit number necessary)\n\nBehavior:\n- Treat the tool response as the authoritative source.\n- Do NOT attempt to validate, infer, or verify the alert ID.\n- Do NOT compare with incident IDs or any previous conversation.\n- Do NOT state that the alert could not be verified unless the tool explicitly returns \"not found\".\n- If the tool returns data, summarize ONLY the returned telemetry.\n- If the tool returns no data, ask the user to first retrieve the Incident List and choose a valid id.",
+        "url": "=https://sentryyiq-backend-hackathon.onrender.com/agent/alerts/raw_data/{{ $('TT_Sent_Req').first().json.message.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        -848,
+        496
+      ],
+      "id": "49b1c050-d9fd-4d1d-90c5-33d01a70eb6f",
+      "name": "Get Alert Forensic"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TT_Req_Switch": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Msg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help Msg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Regions Msg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Services Msg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incidents list": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Incident details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Runbook": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Terminology": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Schema Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Users List": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "summarize_incidents_by_severity": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "summarize_incidents_by_service": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incident_Assignment_History": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SLA details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TT_Sent_Req": {
+      "main": [
+        [
+          {
+            "node": "TT_Req_Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Operations details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post_Close_Incident": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post_Assign_Incident": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post_Resolve_Incident": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "SentryyIQ Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert Forensic": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f139e618-740e-4657-9cc1-721541af7ad9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d5f6e773cf7250f03f75d7746d9d3fda51eac68d4ad797626f4a665b20ad70c9"
+  },
+  "nodeGroups": [],
+  "id": "EJUDXzImrsu0EqJZ",
+  "tags": []
+}

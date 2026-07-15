@@ -1,0 +1,75 @@
+{
+  "name": "incident_assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident_assignment",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -272,
+        -128
+      ],
+      "id": "4859f243-adbc-4ead-83b3-a200c26b4a81",
+      "name": "Webhook",
+      "webhookId": "a282da43-2f9a-48af-ab77-13cb44ae14d3"
+    },
+    {
+      "parameters": {
+        "fromEmail": "shubhiv02@gmail.com",
+        "toEmail": "={{ $json.body.email }}",
+        "subject": "=Alert: SentryyIQ Incident Assigned\n\nTicket {{ $json.body.ticket_id }} Service {{ $json.body.service }} Status {{ $json.body.status}}",
+        "html": "=<h1>Hello {{ $json.body.assignee }},  </h1>\n\n<h2> Incident is Assigned to you, details are attached. </h2>\n\n<p><b>Ticket ID: </b>{{ $json.body.ticket_id }} </p>\n\n<p><b>Service: </b> {{ $json.body.service }}</p>\n\n<p><b>Priority: </b>{{ $json.body.priority }} </p>\n\n<p><b>Status: </b>{{ $json.body.status }} </p>\n\n<p><b>Remarks: </b>{{ $json.body.remarks }} </p>\n\n<p>Please review and work on it immediately.</p>\n\n<p>Request you to to get back and update status as soon as possible.</p>\n<p>Thanks</p> \n<p>Operations Manager - SentryylIQ\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        -128
+      ],
+      "id": "49f9ea42-9818-43f5-a0ca-55bb6828ebf0",
+      "name": "Send an Email",
+      "webhookId": "26f50412-2e37-4900-823f-d476a49ca0d4",
+      "credentials": {
+        "smtp": {
+          "id": "HIMQT2aNNz43wIlc",
+          "name": "SMTP account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "aa8d97dd-39a0-4627-8f30-5891613a5da0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a29d8ae007778a0c12636e989caab5f0b18432f7c1f8677914f1d6b680457ec"
+  },
+  "nodeGroups": [],
+  "id": "rCNpGM6TWPWfPT1e",
+  "tags": []
+}
