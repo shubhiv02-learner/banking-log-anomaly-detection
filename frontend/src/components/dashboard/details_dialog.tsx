@@ -49,6 +49,7 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
     }
   }, [isOpen, isAlert, item.window_metric_id]);
 */
+//chk deployment
 useEffect(() => {
   // Only fetch if the dialog is open, it's an alert, and we have a target id
   if (isOpen && isAlert && item.window_metric_id) {
