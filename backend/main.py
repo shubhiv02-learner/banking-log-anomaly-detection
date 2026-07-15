@@ -3,11 +3,11 @@ from fastapi import FastAPI, Depends, HTTPException, logger
 from sqlalchemy.orm import Session, defer
 from fastapi.middleware.cors import CORSMiddleware
 from notification import notify_n8n
-from backend.database import SessionLocal
-import backend.crud  as crud
-import backend.schemas as schemas
-from backend.db_models import  Ticket, UserMaster
-from backend.notification import notify_n8n
+from database import SessionLocal
+import crud  as crud
+import schemas as schemas
+from db_models import  Ticket, UserMaster
+from notification import notify_n8n
 from rapidfuzz import process, fuzz
 from config import (
     N8N_ASSIGN_WEBHOOK,

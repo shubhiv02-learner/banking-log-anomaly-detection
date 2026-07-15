@@ -1,5 +1,5 @@
-from backend.database import SessionLocal
-from backend.db_models import WindowMetrics, Alert, Ticket
+from database import SessionLocal
+from db_models import WindowMetrics, Alert, Ticket
 import json
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError

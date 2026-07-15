@@ -4,8 +4,8 @@ from unittest import result
 
 from sqlalchemy import func, case
 from sqlalchemy.orm import defer
-from backend.db_models import Alert, WindowMetrics, Ticket, IncidentAssignmentHistory, UserMaster
-import backend.schemas as schemas
+from db_models import Alert, WindowMetrics, Ticket, IncidentAssignmentHistory, UserMaster
+import schemas as schemas
 
 def get_alerts(
         db,
