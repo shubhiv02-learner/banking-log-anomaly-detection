@@ -124,10 +124,10 @@ class StreamMetrics:
         # -----------------
         # Output Record
         # -----------------
-        record["ewma"] = float(state["ewma"])
-        record["cusum"] = float(state["cusum"])
-        record["persistence_score"] = float(state["persistence"])
-        record["incident_probability"] = float(incident_probability)
+        record["ewma"] = round(float(state["ewma"]), 4)
+        record["cusum"] = round(float(state["cusum"]), 4)
+        record["persistence_score"] = round(float(state["persistence"]), 4)
+        record["incident_probability"] = round(float(incident_probability), 4)
         return record
     
     def get_priority(prob):

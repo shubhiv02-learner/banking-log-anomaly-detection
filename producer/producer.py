@@ -46,7 +46,7 @@ try:
         # --- Batch mode: process whole file once ---
         df = pd.read_csv(file_path)   # assumes CSV with consistent columns
         print(df.columns)
-        input('in producer ...')
+        #input('in producer ...')
         for _, row in df.iterrows():
             record = row.to_dict()
            

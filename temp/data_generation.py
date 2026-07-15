@@ -63,9 +63,15 @@ ANOMALY_PROB_RANGES = {
 }
 # --- Baseline Standards ---
 BASELINE_STANDARDS = {
-    ("auth-service","/login"): {"max_latency":50,"max_cpu":50,"max_memory":80,"max_queue":5},
-    ("auth-service","/logout"): {"max_latency":50,"max_cpu":40,"max_memory":70,"max_queue":5},
-    ("auth-service","/kyc"): {"max_latency":80,"max_cpu":60,"max_memory":100,"max_queue":5},
+    ("auth-service","/login"): {"max_latency":50,"max_cpu":20,"max_memory":50,"max_queue":5},
+    ("auth-service","/logout"): {"max_latency":50,"max_cpu":20,"max_memory":50,"max_queue":5},
+    ("auth-service","/kyc"): {"max_latency":80,"max_cpu":30,"max_memory":70,"max_queue":5},
+    ("payment-api", "/transfer"): {"max_latency": 160, "max_cpu": 80, "max_memory": 60, "max_queue": 15},
+    ("payment-api", "/withdrawal"): {"max_latency": 160, "max_cpu": 80, "max_memory": 60, "max_queue": 15},
+    ("trading-engine", "/trade"): {"max_latency": 150, "max_cpu": 80, "max_memory": 60, "max_queue": 2},
+    ("fraud-detection", "/payment"): {"max_latency": 150, "max_cpu": 90, "max_memory": 100, "max_queue": 10},
+    ("ledger-service", "/balance_check"): {"max_latency": 30, "max_cpu": 20, "max_memory": 50, "max_queue": 5},
+    ("investment-engine", "/portfolio"): {"max_latency": 200, "max_cpu": 90, "max_memory": 90, "max_queue": 30}
     # ... (keep rest of your baseline standards unchanged)
 }
 
@@ -172,6 +178,10 @@ def assign_error(severity, service, endpoint, latency, cpu, memory, queue):
 
     limits = BASELINE_STANDARDS.get((service, endpoint))
     if limits:
+        # Clamp values so they never exceed 100
+        memory = min(memory, 100)
+        cpu = min(cpu, 100)
+
         # Metric-driven errors
         if memory > limits["max_memory"] * 1.2:
             return "ERR-901"
@@ -251,7 +261,11 @@ def regenerate_metrics_for_severity(service, endpoint, severity):
         memory  = random.randint(int(limits["max_memory"]*1.4), int(limits["max_memory"]*1.8))
         queue   = random.randint(int(limits["max_queue"]*1.4), int(limits["max_queue"]*1.8))
 
+    # Clamp CPU and memory before returning
+    cpu = min(cpu, 100)
+    memory = min(memory, 100)
     return latency, cpu, memory, queue
+
 
 # --- Main Generation ---
 # --- Main Generation ---

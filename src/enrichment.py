@@ -26,19 +26,19 @@ def build_payload_details(raw_window, ERROR_MAPPING):
             )
             raw_window_df["timestamp"] = raw_window_df["timestamp"].dt.strftime('%Y-%m-%d %H:%M:%S')
         raw_window_df = raw_window_df.where(pd.notnull(raw_window_df), "0")
-
-        # --- 3. Build payload_json ---
+        incident_payload_json_df = raw_window_df[raw_window_df["is_anomaly"] == True]
+        # --- 3. Build payload_json Save All raw records in raw window---
         payload_json = raw_window_df.to_dict(orient="records")
 
-        # --- 4. Normalize top error codes ---
+        # --- 4. Normalize top error codes /Summarize only error records---
         raw_errors = (
-            raw_window_df["error_code"]
+            incident_payload_json_df["error_code"]
             .value_counts()
             .head(5)
             .index
             .tolist()
         )
-        errors = [e if str(e).startswith("ERR") else "ERR-000" for e in raw_errors]
+        errors = [e if str(e).startswith("ERR") else "ERR-UNK" for e in raw_errors]
         """
         # --- 5. Enrich top_errors with metadata ---
         error_details = []
@@ -62,14 +62,14 @@ def build_payload_details(raw_window, ERROR_MAPPING):
         # --- 6. Build enriched summary ---
         payload_summary = OrderedDict([
             ("top_errors", errors),
-            ("regions", list(raw_window_df["region"].dropna().unique())),
-            ("affected_clients", raw_window_df["client_id"].nunique()),
-            ("affected_hosts", raw_window_df["machine_id"].nunique()),
-            ("top_clients", raw_window_df["client_id"].value_counts().head(5).index.tolist()),
-            ("top_hosts", raw_window_df["machine_id"].value_counts().head(5).index.tolist()),
-            ("top_endpoints", raw_window_df["endpoint"].value_counts().head(5).index.tolist()),
-            ("transaction_value", float(raw_window_df["amount"].sum())),
-            ("record_count", len(raw_window_df)),
+            ("regions", list(incident_payload_json_df["region"].dropna().unique())),
+            ("affected_clients", incident_payload_json_df["client_id"].nunique()),
+            ("affected_hosts", incident_payload_json_df["machine_id"].nunique()),
+            ("top_clients", incident_payload_json_df["client_id"].value_counts().head(5).index.tolist()),
+            ("top_hosts", incident_payload_json_df["machine_id"].value_counts().head(5).index.tolist()),
+            ("top_endpoints", incident_payload_json_df["endpoint"].value_counts().head(5).index.tolist()),
+            ("transaction_value", float(incident_payload_json_df["amount"].sum())),
+            ("record_count", len(incident_payload_json_df)),
                   ])
 
         return payload_summary, payload_json
