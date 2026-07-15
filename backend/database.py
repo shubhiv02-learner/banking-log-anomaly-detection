@@ -2,8 +2,7 @@
 
 import os
 from dotenv import load_dotenv
-#from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-#from sqlalchemy.ext.asyncio import AsyncSession
+
 from pathlib import Path
 
 # 1. Load the variables from the .env file into system memory
@@ -33,33 +32,17 @@ if not DATABASE_URL:
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from sqlalchemy import create_engine
+
 engine = create_engine(
     DATABASE_URL,
-    echo=False
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
-
 SessionLocal = sessionmaker(
     bind=engine,
     autocommit=False,
     autoflush=False
 )
-print("Session created successfully")
-##For now will use synchronous connection as Kafka is also synchronous
-"""
-# 3. Create your asynchronous SQLAlchemy engine
-engine = create_async_engine(DATABASE_URL, echo=True)
-print(f"DEBUG: Successfully created async engine with URL: {DATABASE_URL}")
-
-# 4. Create a session pool factory for your API endpoints
-async_session_pool = async_sessionmaker(
-    bind=engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
-)
-print("DEBUG: Async session pool factory created successfully.")
-
-# 5. Dependency helper function to provide a database session to FastAPI
-async def get_db_session():
-    async with async_session_pool() as session:
-        yield session
-"""
+print("Session created successfully", flush=True)

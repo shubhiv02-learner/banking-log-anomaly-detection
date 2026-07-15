@@ -1,7 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel
-#from sqlalchemy.dialects.postgresql import JSONB
-# Replace JSONB with standard Python type annotations
+from enum import Enum
+from pydantic import BaseModel, field_validator
+
 from typing import Dict, Any, List, Union, Optional 
 
 class AlertResponse(BaseModel):
@@ -138,6 +138,54 @@ class TicketDetRes(BaseModel):
     assignee: str | None = None
     notification_time : Optional[datetime] = None
     incident_summary: dict | None = None
+    resolution: str | None = None
+    preventive_action: str | None = None
     class Config:
         from_attributes = True
 
+
+
+class UserMasterResponse(BaseModel):
+
+    user_id: int
+    name: str
+    email: str
+    role: str
+    active: bool
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentAssignmentHistoryResponse(BaseModel):
+
+    assignment_id: int
+    action: str
+    ticket_id: str
+    previous_assignee: str | None = None
+    assigned_to: str
+    assigned_by: str
+    assignment_time: datetime
+    remarks: str | None = None
+
+    class Config:
+        from_attributes = True
+
+class IncidentAction(str, Enum):
+    ASSIGNED = "ASSIGNED"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+    @field_validator("action", mode="before")
+    @classmethod
+    def normalize_action(cls, v):
+        if isinstance(v, str):
+            return v.strip().upper()
+        return v
+    
+class IncidentAssignmentRequest(BaseModel):
+
+    ticket_details: str
+    assigned_to: str = "SYSTEM"
+    remarks: str | None = None
+    action: IncidentAction = IncidentAction.ASSIGNED
+    prevt_remarks: str | None = None

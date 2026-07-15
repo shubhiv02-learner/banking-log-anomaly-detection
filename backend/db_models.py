@@ -1,5 +1,5 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import Column, Boolean, Integer, Float, String, DateTime
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Boolean, Integer, Float, String, DateTime, Text
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 Base = declarative_base()
@@ -76,29 +76,6 @@ class WindowMetrics(Base):
         nullable=False
         )
 
-"""
-##Source of truth will remain same, so new class not required, handle in schema 
-## Pydantic Response Schema (schemas.py) — Create new schemas here what UI or Agent need
-class WindowMetricsDetails(Base):
-    __tablename__ = "window_metrics"
-    payload_summary = Column(JSONB, nullable=True)
-    payload_json = Column(JSONB, nullable=True)
-
-
-    # No __tablename__ needed here! It inherits it from WindowMetrics.
-    
-    # You must use use_existing_column=True because these columns 
-    # already exist on the parent WindowMetrics class table map.
-    payload_summary: Mapped[str] = mapped_column(
-        use_existing_column=True,
-        deferred=False  # Force it to load immediately on this specific subclass
-    )
-
-    payload_json: Mapped[dict] = mapped_column(
-        use_existing_column=True,
-        deferred=False  # Force it to load immediately on this specific subclass
-    )
-"""
 
 class Ticket(Base):
 
@@ -130,3 +107,54 @@ class Ticket(Base):
         String,
         default="OPEN")
 
+
+class UserMaster(Base):
+
+    __tablename__ = "user_master"
+
+    user_id = Column(Integer, primary_key=True)
+
+    name = Column(String(100), nullable=False)
+
+    email = Column(String(150), nullable=False)
+
+    role = Column(String(50))
+
+    active = Column(
+        Boolean,
+        default=True,
+        nullable=False
+    )
+
+    
+class IncidentAssignmentHistory(Base):
+
+    __tablename__ = "incident_assignment_history"
+
+    assignment_id = Column(Integer, primary_key=True)
+
+    ticket_id = Column(
+        String(50),
+        nullable=False
+    )
+
+    previous_assignee = Column(String(100))
+
+    assigned_to = Column(
+        String(100),
+        nullable=False
+    )
+
+    assigned_by = Column(
+        String(100),
+        nullable=False
+    )
+
+    assignment_time = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+    )
+
+    remarks = Column(Text)
+    action = Column(String(50),default="ASSIGNED")

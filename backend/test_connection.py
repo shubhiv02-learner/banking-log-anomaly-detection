@@ -1,7 +1,8 @@
 # backend/test_connection.py
-
+# Used for Asyn testing - Not needed for synchronous testing
 import asyncio
 from sqlalchemy import text
+
 # Import the engine engine asset from your database.py file
 from database import engine
 import os
