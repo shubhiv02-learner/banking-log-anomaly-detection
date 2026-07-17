@@ -17,6 +17,8 @@ FOLDER_TO_DOCUMENT_TYPE = {
     "faq":"faq"
 }
 
+DEFAULT_DOCUMENT_TYPE = "general"
+
 # Supported document formats
 SUPPORTED_EXTENSIONS = {
     ".md",

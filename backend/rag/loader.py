@@ -1,8 +1,8 @@
-import logging, os
+
 from pathlib import Path
 
 from backend.rag.config import KNOWLEDGE_BASE, SUPPORTED_EXTENSIONS
-from backend.rag.rag_models import DocumentInfo
+from backend.rag.rag_models import Document
 
 from backend.logging_config import get_logger
 
@@ -13,13 +13,13 @@ class DocumentLoader:
     def __init__(self, knowledge_base: Path = KNOWLEDGE_BASE):
         self.knowledge_base = knowledge_base
         print("Initialized")
-    def load_documents(self) -> list[DocumentInfo]:
+    def load_documents(self) -> list[Document]:
         """
         Scan the knowledge base and return supported documents.
         """
         logger.info("Scanning knowledge base: %s", self.knowledge_base)
 
-        documents: list[DocumentInfo] = []
+        documents: list[Document] = []
 
         skipped = 0
 
@@ -34,7 +34,7 @@ class DocumentLoader:
                 logger.debug("Skipping unsupported file: %s", path.name)
                 continue
             
-            document = DocumentInfo(
+            document = Document(
                 file_name=path.name,
                 file_path=path.resolve(),
                 relative_path=str(path.relative_to(self.knowledge_base)),
