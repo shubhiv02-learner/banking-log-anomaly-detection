@@ -1,0 +1,34 @@
+
+================================================
+ SENTINELIQ LOG GENERATION COMPLETED 
+================================================
+
+Total Logs Generated : 15000
+
+Services Monitored:service
+auth-service            2183
+investment-engine       2163
+trading-engine          2161
+payment-api             2154
+fraud-detection         2138
+notification-service    2135
+portfolio-service       2066
+
+Status Distribution:status
+success         14262
+queue_delay       436
+high_latency      276
+timeout            25
+db_failure          1
+
+Severity Distribution:severity
+low         14262
+medium        712
+critical       26
+
+Sample Logs:             timestamp          service   endpoint     region  latency_ms  cpu_usage  memory_usage  queue_lag   status error_code severity  error_count  is_anomaly
+0  2026-01-01T00:00:00  fraud-detection       /kyc  Singapore         172      66.23         51.53          3  success        NaN      low            0           0
+1  2026-01-01T00:00:30     auth-service       /kyc        UAE          86      47.38         70.32          3  success        NaN      low            0           0
+2  2026-01-01T00:01:00   trading-engine   /payment        USA         104      66.27         71.41         10  success        NaN      low            0           0
+3  2026-01-01T00:01:30  fraud-detection  /transfer      India         222      51.28         43.71          7  success        NaN      low            0           0
+4  2026-01-01T00:02:00     auth-service     /login        UAE         100      44.04         56.67          5  success        NaN      low            0           0

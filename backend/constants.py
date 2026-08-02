@@ -1,0 +1,5 @@
+N8N_BASE_URL="http://localhost:5678"
+N8N_ALERT_WEBHOOK= "https://ss070726.app.n8n.cloud/webhook-test/critical-incident"
+N8N_ASSIGN_WEBHOOK="https://sst071126temp.app.n8n.cloud/workflow/e0qoTJSqIUCw5QcW"
+N8N_RESOLVE_WEBHOOK="https://ss070726.app.n8n.cloud/webhook-test/bad42eda-f186-425b-9929-40b25bc0b7ce/webhook"
+N8N_CLOSE_WEBHOOK="https://ss070726.app.n8n.cloud/webhook-test/bad42eda-f186-425b-9929-40b25bc0b7ce/webhook"

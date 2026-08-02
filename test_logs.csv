@@ -1,0 +1,21 @@
+timestamp,service,endpoint,region,latency_ms,cpu_usage,memory_usage,queue_lag,amount,error_code,severity,status,error_count,anomaly_probability_%,is_anomaly,client_id,machine_id
+2026-06-22 17:40:49,investment-engine,/recommendation,us-east-1,128ms,21m,573MiB,47ms,6685.92,,Low,Success,0,4,0,CUST-109482,DEV-LIN-11235
+2026-06-22 17:40:49,trading-engine,/transfer,ap-southeast-1,247ms,50m,528MiB,33ms,7869.73,,Low,Success,0,8,0,CUST-112349,DEV-WIN-99325
+2026-06-22 17:40:49,auth-service,/logout,us-east-1,89ms,58m,408MiB,17ms,99.54,,Low,Success,0,10,0,CUST-100483,DEV-LIN-11235
+2026-06-22 17:40:49,payment-api,/withdrawal,ap-southeast-1,78ms,39m,607MiB,38ms,4337.97,,Low,Success,0,8,0,CUST-134098,DEV-MAC-75825
+2026-06-22 17:40:49,notification-service,/login,us-east-1,210ms,30m,680MiB,40ms,5083.3,,Low,Success,0,0,0,CUST-123456,DEV-MAC-75825
+2026-06-22 17:40:50,fraud-detection,/payment,us-west-2,145ms,34m,624MiB,7ms,443.31,ERR-201,Medium,Failure,0,74,1,CUST-112349,DEV-WIN-99325
+2026-06-22 17:40:50,investment-engine,/portfolio,us-east-1,242ms,78m,541MiB,13ms,14730.7,,Low,Success,0,2,0,CUST-134098,DEV-WIN-84725
+2026-06-22 17:40:50,payment-api,/withdrawal,ap-southeast-1,259ms,35m,461MiB,24ms,1208.34,,Low,Success,0,2,0,CUST-100483,DEV-MAC-0149A5
+2026-06-22 17:40:50,auth-service,/logout,ap-southeast-1,174ms,66m,251MiB,40ms,344.97,,Low,Success,0,0,0,CUST-112349,DEV-WIN-99325
+2026-06-22 17:40:50,portfolio-service,/trade,ap-southeast-1,279ms,29m,762MiB,7ms,14630.21,,Low,Success,0,9,0,CUST-112349,DEV-LIN-11235
+2026-06-22 17:40:51,payment-api,/payment,us-east-1,164ms,30m,313MiB,50ms,2074.18,,Low,Success,0,4,0,CUST-134098,DEV-MAC-0149A5
+2026-06-22 17:40:51,auth-service,/login,eu-west-1,133ms,85m,315MiB,37ms,174.34,,Low,Success,0,8,0,CUST-109482,DEV-MAC-75825
+2026-06-22 17:40:51,investment-engine,/withdrawal,us-east-1,263ms,66m,283MiB,9ms,13198.26,,Low,Success,0,6,0,CUST-134098,DEV-WIN-99325
+2026-06-22 17:40:51,fraud-detection,/kyc,eu-west-1,250ms,36m,363MiB,31ms,203.22,,Low,Success,0,6,0,CUST-112349,DEV-MAC-75825
+2026-06-22 17:40:51,portfolio-service,/trade,us-west-2,199ms,25m,720MiB,13ms,12547.24,,Low,Success,0,6,0,CUST-100483,DEV-LIN-11235
+2026-06-22 17:40:52,investment-engine,/trade,eu-west-1,155ms,89m,722MiB,40ms,12664.7,,Low,Success,0,2,0,CUST-123456,DEV-MAC-75825
+2026-06-22 17:40:52,portfolio-service,/performance,eu-west-1,291ms,35m,486MiB,27ms,13394.33,,Low,Success,0,0,0,CUST-123456,DEV-LIN-11235
+2026-06-22 17:40:52,notification-service,/login,ap-southeast-1,76ms,68m,349MiB,42ms,1147.59,,Low,Success,0,5,0,CUST-112349,DEV-MAC-0149A5
+2026-06-22 17:40:52,payment-api,/withdrawal,ap-southeast-1,106ms,56m,667MiB,11ms,7836.71,,Low,Success,0,4,0,CUST-134098,DEV-WIN-99325
+2026-06-22 17:40:52,fraud-detection,/payment,eu-west-1,211ms,51m,757MiB,21ms,243.0,ERR-201,High,Failure,7,87,1,CUST-100483,DEV-MAC-75825
