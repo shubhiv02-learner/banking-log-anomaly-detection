@@ -80,6 +80,7 @@ function AnalyticsPage() {
   };
  
   console.log("sample metric for chart ###", slice[0]);
+  console.log(import.meta.env.VITE_API_BASE_URL);
   return (
     <div className="space-y-6">
       {/* GLOBAL CONTROLS HEADER CARD */}
