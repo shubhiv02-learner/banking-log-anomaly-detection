@@ -1,8 +1,26 @@
 from datetime import datetime
 from enum import Enum
+import json
 from pydantic import BaseModel, field_validator
 
-from typing import Dict, Any, List, Union, Optional 
+from typing import Dict, Any, List, Union, Optional
+
+
+def _parse_json_field(value: Any) -> Any:
+    """JSONB sometimes comes back as a double-encoded JSON string."""
+    if value is None or isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        value = value.decode("utf-8")
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return value
+    return value 
 
 class AlertResponse(BaseModel):
 
@@ -73,13 +91,12 @@ class WindowMetricResponse(BaseModel):
     incident_probability : float
     payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
     payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
-
-    #  FIX: Changed from JSONB to primitive Python types
-    # (Using Union allows your JSON to be either an object/dictionary or an array/list)
-    #payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
-    #payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
     created_at: datetime
 
+    @field_validator("payload_json", "payload_summary", mode="before")
+    @classmethod
+    def parse_payload_fields(cls, value: Any) -> Any:
+        return _parse_json_field(value)
 
     class Config:
         from_attributes = True
@@ -89,8 +106,12 @@ class WindowMetricsDetail(BaseModel):
     id: int
     payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
     payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
-    # This configuration is required for Pydantic v2 to map SQLAlchemy outputs safely
-    #model_config = ConfigDict(from_attributes=True) 
+
+    @field_validator("payload_json", "payload_summary", mode="before")
+    @classmethod
+    def parse_payload_fields(cls, value: Any) -> Any:
+        return _parse_json_field(value)
+
     class Config:
         from_attributes = True
     

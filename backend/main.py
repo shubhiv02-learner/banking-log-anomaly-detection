@@ -170,7 +170,46 @@ def recent_window_metrics(
     db: Session = Depends(get_db)
 ):
 
-    return crud.get_recent_window_metrics(db)
+    rows = crud.get_recent_window_metrics(db)
+    # #region agent log
+    try:
+        import json as _json, time as _time, os as _os
+        sample = rows[0] if rows else None
+        raw_pj = getattr(sample, "payload_json", None) if sample is not None else None
+        raw_ps = getattr(sample, "payload_summary", None) if sample is not None else None
+        payload = {
+            "sessionId": "f2332d",
+            "runId": "post-fix",
+            "hypothesisId": "PJ",
+            "location": "main.py:recent_window_metrics",
+            "message": "payload field runtime types before response serialization",
+            "data": {
+                "row_count": len(rows),
+                "payload_json_type": type(raw_pj).__name__,
+                "payload_summary_type": type(raw_ps).__name__,
+                "payload_json_is_str": isinstance(raw_pj, str),
+                "payload_summary_is_str": isinstance(raw_ps, str),
+                "payload_json_preview": (raw_pj[:120] if isinstance(raw_pj, str) else str(type(raw_pj))),
+            },
+            "timestamp": int(_time.time() * 1000),
+        }
+        print(f"[agent-dbg] {payload}")
+        for _path in (
+            "C:/Shubhi/banking-log-anomaly-detection/.cursor/debug-f2332d.log",
+            ".cursor/debug-f2332d.log",
+            "debug-f2332d.log",
+        ):
+            try:
+                _os.makedirs(_os.path.dirname(_path) or ".", exist_ok=True)
+                with open(_path, "a", encoding="utf-8") as _f:
+                    _f.write(_json.dumps(payload) + "\n")
+                break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    # #endregion
+    return rows
 
 @app.get(
     "/window-metrics/{metric_id}",
