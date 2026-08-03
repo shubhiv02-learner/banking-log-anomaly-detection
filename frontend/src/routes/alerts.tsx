@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
-import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog"; // 👈 IMPORT THE UNIFIED DIALOG
+import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
 import { api } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import type { Alert, AlertStatus, Priority, ServiceCount } from "@/lib/api/types";
@@ -41,6 +41,8 @@ export const Route = createFileRoute("/alerts")({
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
 const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
+/** Visible page length for the details table; header counts still use full fetch. */
+const TABLE_PAGE_SIZE = 20;
 
 function AlertsPage() {
   const [all, setAll] = useState<Alert[]>([]);
@@ -60,13 +62,6 @@ function AlertsPage() {
       .catch((err) => console.error("Failed to fetch services:", err));
   }, []);
 
-  useEffect(() => {
-    console.log("alerts count", all.length);
-    console.log("critical count", all.filter(a => a.priority === "Critical").length);
-    console.log("high count", all.filter(a => a.priority === "High").length);
-    console.log("medium count", all.filter(a => a.priority === "Medium").length);
-  }, [all]);
-
   const filtered = useMemo(() => {
     return all.filter((a) => {
       if (priority !== "all" && a.priority !== priority) return false;
@@ -84,6 +79,11 @@ function AlertsPage() {
     });
   }, [all, priority, status, service, q]);
 
+  const visible = useMemo(
+    () => filtered.slice(0, TABLE_PAGE_SIZE),
+    [filtered],
+  );
+
   const counts = [
     { p: "Critical", n: all.filter((a) => a.priority === "Critical").length },
     { p: "High", n: all.filter((a) => a.priority === "High").length },
@@ -93,7 +93,6 @@ function AlertsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Priority summary cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {counts.map(({ p, n }) => (
           <Card key={p}>
@@ -114,7 +113,6 @@ function AlertsPage() {
         ))}
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -170,23 +168,22 @@ function AlertsPage() {
         </CardContent>
       </Card>
 
-      {/* Alerts table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">ID</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Final Score</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Created</TableHead>
-                <TableHead className="w-16 text-center">Actions</TableHead> {/* 👈 ADDED ACTIONS COLUMN */}
+                <TableHead className="w-[8%]">ID</TableHead>
+                <TableHead className="w-[20%]">Service</TableHead>
+                <TableHead className="w-[12%]">Priority</TableHead>
+                <TableHead className="w-[12%]">Final Score</TableHead>
+                <TableHead className="w-[14%]">Status</TableHead>
+                <TableHead className="w-[22%] text-right">Created</TableHead>
+                <TableHead className="w-[12%] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((a) => (
+              {visible.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">#{a.id}</TableCell>
                   <TableCell className="text-sm">
@@ -198,19 +195,18 @@ function AlertsPage() {
                   <TableCell className="font-mono text-xs">
                     {a.final_score.toFixed(3)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[14%]">
                     <StatusPill status={a.status} />
                   </TableCell>
                   <TableCell
-                    className="text-right text-xs text-muted-foreground"
+                    className="w-[22%] text-right text-xs text-muted-foreground whitespace-nowrap"
                     title={a.created_at}
                   >
                     {formatDistanceToNow(new Date(a.created_at), {
                       addSuffix: true,
                     })}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {/* 👈 MOUNT DYNAMIC ITEM PAYLOAD SEED */}
+                  <TableCell className="w-[12%] text-center">
                     <IncidentDetailsDialog item={a} />
                   </TableCell>
                 </TableRow>
@@ -218,7 +214,7 @@ function AlertsPage() {
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7} // 👈 EXPANDED COLSPAN VALUE TO SHIFT TO THE SEVENTH GRID CELL
+                    colSpan={7}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     No alerts match the current filters.
@@ -227,6 +223,14 @@ function AlertsPage() {
               )}
             </TableBody>
           </Table>
+          {filtered.length > 0 && (
+            <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+              Showing {visible.length} of {filtered.length} matching alerts
+              {filtered.length > TABLE_PAGE_SIZE
+                ? ` (page limit ${TABLE_PAGE_SIZE})`
+                : ""}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

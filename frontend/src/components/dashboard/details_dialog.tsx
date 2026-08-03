@@ -8,7 +8,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, ShieldAlert, User, Server, Hash, Activity } from "lucide-react";
 import { PriorityBadge } from "./priority-badge";
 import { StatusPill } from "./status-pill";
@@ -28,7 +27,7 @@ interface IncidentDetailsDialogProps {
 }
 
 const PANEL =
-  "h-[min(420px,50vh)] rounded-lg border border-border bg-card text-card-foreground";
+  "h-[min(420px,50vh)] overflow-y-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable] [scrollbar-width:thin]";
 const TAB_TRIGGER =
   "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground";
 
@@ -80,7 +79,7 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
   };
 
   const alertOverview = (
-    <ScrollArea className={PANEL}>
+    <div className={PANEL}>
       <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {isLoading
           ? "Loading evaluation window metrics…"
@@ -107,11 +106,11 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
 • Final Weighted Score    : ${metrics?.final_score?.toFixed(4) ?? "N/A"}
 • Prediction Flag         : State Code [${metrics?.prediction ?? "0"}]`}
       </pre>
-    </ScrollArea>
+    </div>
   );
 
   const ticketOverview = (
-    <ScrollArea className={PANEL}>
+    <div className={PANEL}>
       <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {`[SYSTEM CORRELATION]
 An incident workflow state has been initialized targeting the "${SERVICE_LABELS[item.service] ?? item.service}" service layer.
@@ -123,7 +122,7 @@ An incident workflow state has been initialized targeting the "${SERVICE_LABELS[
 
 No manual engineering notes have been appended yet.`}
       </pre>
-    </ScrollArea>
+    </div>
   );
 
   return (
@@ -137,11 +136,11 @@ No manual engineering notes have been appended yet.`}
         </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground border-2 border-border shadow-2xl ring-1 ring-foreground/15">
         <DialogHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge priority={item.priority} />
-            <StatusPill status={item.status} />
+            <StatusPill status={item.status} label={!isAlert && item.status === "ACKNOWLEDGED" ? "ASSIGNED" : undefined} />
           </div>
           <DialogTitle className="text-xl font-semibold tracking-tight flex items-center gap-2">
             {isAlert ? (
@@ -218,7 +217,7 @@ No manual engineering notes have been appended yet.`}
               {alertOverview}
             </TabsContent>
             <TabsContent value="summary" className="mt-3">
-              <ScrollArea className={`${PANEL} pr-3`}>
+              <div className={`${PANEL} pr-1`}>
                 <div className="p-3">
                   {isLoading ? (
                     <p className="text-sm text-muted-foreground py-6 text-center">Loading summary…</p>
@@ -229,10 +228,10 @@ No manual engineering notes have been appended yet.`}
                     />
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
             <TabsContent value="records" className="mt-3">
-              <ScrollArea className={`${PANEL} pr-3`}>
+              <div className={`${PANEL} pr-1`}>
                 <div className="p-3">
                   {isLoading ? (
                     <p className="text-sm text-muted-foreground py-6 text-center">Loading records…</p>
@@ -240,7 +239,7 @@ No manual engineering notes have been appended yet.`}
                     <JsonRecordsView value={metrics?.payload_json} />
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
             <TabsContent value="raw" className="mt-3 space-y-3">
               <div>
@@ -274,14 +273,14 @@ No manual engineering notes have been appended yet.`}
               {ticketOverview}
             </TabsContent>
             <TabsContent value="summary" className="mt-3">
-              <ScrollArea className={`${PANEL} pr-3`}>
+              <div className={`${PANEL} pr-1`}>
                 <div className="p-3">
                   <PayloadSummaryView
                     value={"incident_summary" in item ? item.incident_summary : null}
                     emptyLabel="No incident summary linked"
                   />
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
             <TabsContent value="raw" className="mt-3">
               <JsonRawView

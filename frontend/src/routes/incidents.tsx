@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/table";
 
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
-import { StatusPill } from "@/components/dashboard/status-pill";
-import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog"; // 👈 REGISTER NEW DIALOG COMPONENT INTO ENVIRONMENT
+import { StatusPill, statusDisplayLabel } from "@/components/dashboard/status-pill";
+import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
 import { api } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 
@@ -44,6 +44,8 @@ export const Route = createFileRoute("/incidents")({
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
 const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
+/** Visible page length for the details table; header counts still use full fetch. */
+const TABLE_PAGE_SIZE = 20;
 
 function IncidentsPage() {
   const [all, setAll] = useState<Ticket[]>([]);
@@ -52,28 +54,9 @@ function IncidentsPage() {
 
   useEffect(() => {
     api.listTickets()
-   .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
+      .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
       .catch((err) => console.error("Failed to fetch incidents:", err));
   }, []);
- 
-  useEffect(() => {
-    console.log("Incidents count", all.length);
-
-    console.log(
-      "critical count",
-      all.filter(a => a.priority === "Critical").length
-    );
-
-    console.log(
-      "high count",
-      all.filter(a => a.priority === "High").length
-    );
-
-    console.log(
-      "medium count",
-      all.filter(a => a.priority === "Medium").length
-    );
-  }, [all]);
 
   const filtered = useMemo(() => {
     return all.filter((a) => {
@@ -83,18 +66,29 @@ function IncidentsPage() {
     });
   }, [all, priority, status]);
 
+  const visible = useMemo(
+    () => filtered.slice(0, TABLE_PAGE_SIZE),
+    [filtered],
+  );
+
   const counts = [
-    { p: "Critical Incidents", n: all.filter((a) => a.priority === "Critical" && a.status === "OPEN").length },
-    { p: "Acknowledged", n: all.filter((a) => a.status === "ACKNOWLEDGED").length },
+    {
+      p: "Critical Incidents",
+      n: all.filter((a) => a.priority === "Critical" && a.status === "OPEN").length,
+    },
+    {
+      p: "ASSIGNED",
+      n: all.filter((a) => a.status === "ACKNOWLEDGED").length,
+      statusPill: "ACKNOWLEDGED" as AlertStatus,
+    },
     { p: "Resolved", n: all.filter((a) => a.status === "RESOLVED").length },
     { p: "Total Open", n: all.filter((a) => a.status === "OPEN").length },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Priority summary cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {counts.map(({ p, n }) => (
+        {counts.map(({ p, n, statusPill }) => (
           <Card key={p}>
             <CardContent className="p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -102,10 +96,14 @@ function IncidentsPage() {
               </p>
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-mono text-2xl font-semibold">{n}</span>
-                {p === "Open" ? (
+                {statusPill ? (
+                  <StatusPill status={statusPill} label="ASSIGNED" />
+                ) : p === "Total Open" ? (
                   <StatusPill status="OPEN" />
+                ) : p === "Resolved" ? (
+                  <StatusPill status="RESOLVED" />
                 ) : (
-                  <PriorityBadge priority={p as Priority} />
+                  <PriorityBadge priority="Critical" />
                 )}
               </div>
             </CardContent>
@@ -113,7 +111,6 @@ function IncidentsPage() {
         ))}
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -138,37 +135,36 @@ function IncidentsPage() {
                 <SelectItem value="all">All statuses</SelectItem>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s}
+                    {statusDisplayLabel(s, "incidents")}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <span className="ml-auto text-xs text-muted-foreground">
-              {filtered.length} of {all.length} alerts
+              {filtered.length} of {all.length} incidents
             </span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Alerts table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20">ID</TableHead>
-                <TableHead>Alert Id</TableHead>
-                <TableHead>Ticket Id</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Assigned On</TableHead>
-                <TableHead className="w-16 text-center">Actions</TableHead> {/* 👈 ACTIONS HEADER CELL TARGET SETUP */}
+                <TableHead className="w-[7%]">ID</TableHead>
+                <TableHead className="w-[8%]">Alert Id</TableHead>
+                <TableHead className="w-[12%]">Ticket Id</TableHead>
+                <TableHead className="w-[14%]">Service</TableHead>
+                <TableHead className="w-[12%]">Assigned To</TableHead>
+                <TableHead className="w-[10%]">Priority</TableHead>
+                <TableHead className="w-[12%]">Status</TableHead>
+                <TableHead className="w-[15%] text-right">Assigned On</TableHead>
+                <TableHead className="w-[10%] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((a) => (
+              {visible.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">#{a.id}</TableCell>
                   <TableCell className="font-mono text-xs">{a.alert_id}</TableCell>
@@ -180,19 +176,21 @@ function IncidentsPage() {
                   <TableCell>
                     <PriorityBadge priority={a.priority} />
                   </TableCell>
-                  <TableCell>
-                    <StatusPill status={a.status} />
+                  <TableCell className="w-[12%]">
+                    <StatusPill
+                      status={a.status}
+                      label={statusDisplayLabel(a.status, "incidents")}
+                    />
                   </TableCell>
                   <TableCell
-                    className="text-right text-xs text-muted-foreground"
+                    className="w-[15%] text-right text-xs text-muted-foreground whitespace-nowrap"
                     title={a.created_at}
                   >
                     {formatDistanceToNow(new Date(a.created_at), {
                       addSuffix: true,
                     })}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {/* 👈 CLICKABLE DIALOG ICON INJECTED PER TICKET ROW */}
+                  <TableCell className="w-[10%] text-center">
                     <IncidentDetailsDialog item={a} />
                   </TableCell>
                 </TableRow>
@@ -200,7 +198,7 @@ function IncidentsPage() {
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={9} // 👈 CORRECTED COLSPAN FROM 6 TO 9 TO MERGE FULL ACTIONS TRACK ROWS SMOOTHLY
+                    colSpan={9}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     No incidents match the current filters.
@@ -209,6 +207,14 @@ function IncidentsPage() {
               )}
             </TableBody>
           </Table>
+          {filtered.length > 0 && (
+            <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+              Showing {visible.length} of {filtered.length} matching incidents
+              {filtered.length > TABLE_PAGE_SIZE
+                ? ` (page limit ${TABLE_PAGE_SIZE})`
+                : ""}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const RECORDS_ROW_CAP = 50;
 
@@ -238,11 +237,11 @@ export function JsonRawView({ value }: { value: unknown }) {
   if (parsed == null) return <EmptyState label="No raw payload linked" />;
 
   return (
-    <ScrollArea className="h-[min(420px,50vh)] rounded-lg border border-border bg-card text-card-foreground">
+    <div className="h-[min(420px,50vh)] overflow-y-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable] [scrollbar-width:thin]">
       <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {JSON.stringify(parsed, null, 2)}
       </pre>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -304,10 +303,23 @@ function buildErrorNameMap(metricsDetails: unknown): Map<string, string> {
   return map;
 }
 
-function CommaListSection({ title, values }: { title: string; values: string[] }) {
+function CommaListSection({
+  title,
+  values,
+  count,
+}: {
+  title: string;
+  values: string[];
+  count?: number;
+}) {
+  const displayCount = count ?? values.length;
+  const heading =
+    count != null || values.length > 0 ? `${title} (${displayCount})` : title;
   return (
     <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {heading}
+      </h4>
       {values.length ? (
         <p className="text-sm text-foreground leading-relaxed break-words">{values.join(", ")}</p>
       ) : (
@@ -317,36 +329,12 @@ function CommaListSection({ title, values }: { title: string; values: string[] }
   );
 }
 
-function IdListTable({ title, values, idLabel }: { title: string; values: string[]; idLabel: string }) {
-  return (
-    <div className="space-y-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
-      {values.length ? (
-        <div className="rounded-md border border-border overflow-x-auto bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-14">#</TableHead>
-                <TableHead>{idLabel}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {values.map((id, idx) => (
-                <TableRow key={`${id}-${idx}`}>
-                  <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                  <TableCell className="font-mono text-xs text-foreground">{id}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground border border-dashed border-border rounded-lg px-3 py-4">
-          None linked
-        </p>
-      )}
-    </div>
-  );
+function scalarCount(value: JsonValue | undefined, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && !Number.isNaN(Number(value))) {
+    return Number(value);
+  }
+  return fallback;
 }
 
 /** Domain-aware summary for payload_summary / incident_summary. */
@@ -386,7 +374,6 @@ export function PayloadSummaryView({
     errorRows.push({ code, name: name ?? "Unknown Error" });
   }
 
-  // If top_errors empty but metrics_details exists, show those
   if (!errorRows.length && nameByCode.size) {
     for (const [code, name] of nameByCode) {
       errorRows.push({ code, name });
@@ -400,10 +387,15 @@ export function PayloadSummaryView({
     "top_endpoints",
     "top_errors",
     "metrics_details",
+    "affected_clients",
+    "affected_hosts",
   ]);
   const scalarEntries = Object.entries(summary).filter(
     ([key, val]) => !reserved.has(key) && (val === null || typeof val !== "object"),
   );
+
+  const clientCount = scalarCount(summary.affected_clients, topClients.length);
+  const hostCount = scalarCount(summary.affected_hosts, topHosts.length);
 
   return (
     <div className="space-y-4 text-foreground">
@@ -439,8 +431,8 @@ export function PayloadSummaryView({
         )}
       </div>
 
-      <IdListTable title="Top Clients" values={topClients} idLabel="Client ID" />
-      <IdListTable title="Top Hosts" values={topHosts} idLabel="Host / Machine ID" />
+      <CommaListSection title="Top Clients" values={topClients} count={clientCount} />
+      <CommaListSection title="Top Hosts" values={topHosts} count={hostCount} />
       {topEndpoints.length > 0 && (
         <CommaListSection title="Top Endpoints" values={topEndpoints} />
       )}
