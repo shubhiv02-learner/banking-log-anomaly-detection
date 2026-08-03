@@ -16,7 +16,7 @@ import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import { formatDistanceToNow } from "date-fns";
 import { api } from "@/lib/api/client";
 import type { Ticket, Alert, WindowMetric, WindowMetricFull } from "@/lib/api/types";
-import { JsonRecordsView, JsonRawView, JsonStructuredView } from "@/lib/json-display";
+import { JsonRecordsView, JsonRawView, PayloadSummaryView } from "@/lib/json-display";
 
 type ExtensibleItem = (Alert | Ticket) & {
   notification_time?: string | null;
@@ -26,6 +26,11 @@ type ExtensibleItem = (Alert | Ticket) & {
 interface IncidentDetailsDialogProps {
   item: ExtensibleItem;
 }
+
+const PANEL =
+  "h-[min(420px,50vh)] rounded-lg border border-border bg-card text-card-foreground";
+const TAB_TRIGGER =
+  "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground";
 
 export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
   const isAlert = "final_score" in item;
@@ -75,8 +80,8 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
   };
 
   const alertOverview = (
-    <ScrollArea className="h-[320px] rounded-lg border border-border bg-muted/40">
-      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+    <ScrollArea className={PANEL}>
+      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {isLoading
           ? "Loading evaluation window metrics…"
           : `--- SentinelIQ Real-Time Alert Stream ---
@@ -106,8 +111,8 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
   );
 
   const ticketOverview = (
-    <ScrollArea className="h-[320px] rounded-lg border border-border bg-muted/40">
-      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+    <ScrollArea className={PANEL}>
+      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {`[SYSTEM CORRELATION]
 An incident workflow state has been initialized targeting the "${SERVICE_LABELS[item.service] ?? item.service}" service layer.
 
@@ -132,7 +137,7 @@ No manual engineering notes have been appended yet.`}
         </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-3xl gap-5">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground">
         <DialogHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge priority={item.priority} />
@@ -153,7 +158,9 @@ No manual engineering notes have been appended yet.`}
             <Server className="w-4 h-4 text-muted-foreground shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Target Domain Service</p>
-              <p className="font-medium">{SERVICE_LABELS[item.service] ?? item.service}</p>
+              <p className="font-medium text-foreground">
+                {SERVICE_LABELS[item.service] ?? item.service}
+              </p>
             </div>
           </div>
 
@@ -173,7 +180,7 @@ No manual engineering notes have been appended yet.`}
                 <Hash className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Ticket Reference</p>
-                  <p className="font-mono font-medium">
+                  <p className="font-mono font-medium text-foreground">
                     {"ticket_id" in item ? item.ticket_id || "N/A" : "N/A"}
                   </p>
                 </div>
@@ -182,7 +189,7 @@ No manual engineering notes have been appended yet.`}
                 <User className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Assigned Analyst</p>
-                  <p className="font-medium">
+                  <p className="font-medium text-foreground">
                     {"assignee" in item ? item.assignee || "Unassigned" : "Unassigned"}
                   </p>
                 </div>
@@ -192,35 +199,47 @@ No manual engineering notes have been appended yet.`}
         </div>
 
         {isAlert ? (
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="records">Records</TabsTrigger>
-              <TabsTrigger value="raw">Raw</TabsTrigger>
+          <Tabs defaultValue="overview" className="w-full min-w-0">
+            <TabsList className="grid w-full grid-cols-4 h-auto gap-1 bg-muted/80 p-1">
+              <TabsTrigger value="overview" className={TAB_TRIGGER}>
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="summary" className={TAB_TRIGGER}>
+                Summary
+              </TabsTrigger>
+              <TabsTrigger value="records" className={TAB_TRIGGER}>
+                Records
+              </TabsTrigger>
+              <TabsTrigger value="raw" className={`${TAB_TRIGGER} text-[11px] sm:text-sm px-1 sm:px-3`}>
+                Telemetry Details
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="mt-3">
               {alertOverview}
             </TabsContent>
             <TabsContent value="summary" className="mt-3">
-              <ScrollArea className="h-[320px] pr-3">
-                {isLoading ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Loading summary…</p>
-                ) : (
-                  <JsonStructuredView
-                    value={metrics?.payload_summary}
-                    emptyLabel="No telemetry summary linked"
-                  />
-                )}
+              <ScrollArea className={`${PANEL} pr-3`}>
+                <div className="p-3">
+                  {isLoading ? (
+                    <p className="text-sm text-muted-foreground py-6 text-center">Loading summary…</p>
+                  ) : (
+                    <PayloadSummaryView
+                      value={metrics?.payload_summary}
+                      emptyLabel="No telemetry summary linked"
+                    />
+                  )}
+                </div>
               </ScrollArea>
             </TabsContent>
             <TabsContent value="records" className="mt-3">
-              <ScrollArea className="h-[320px] pr-3">
-                {isLoading ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Loading records…</p>
-                ) : (
-                  <JsonRecordsView value={metrics?.payload_json} />
-                )}
+              <ScrollArea className={`${PANEL} pr-3`}>
+                <div className="p-3">
+                  {isLoading ? (
+                    <p className="text-sm text-muted-foreground py-6 text-center">Loading records…</p>
+                  ) : (
+                    <JsonRecordsView value={metrics?.payload_json} />
+                  )}
+                </div>
               </ScrollArea>
             </TabsContent>
             <TabsContent value="raw" className="mt-3 space-y-3">
@@ -239,21 +258,29 @@ No manual engineering notes have been appended yet.`}
             </TabsContent>
           </Tabs>
         ) : (
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="raw">Raw</TabsTrigger>
+          <Tabs defaultValue="overview" className="w-full min-w-0">
+            <TabsList className="grid w-full grid-cols-3 h-auto gap-1 bg-muted/80 p-1">
+              <TabsTrigger value="overview" className={TAB_TRIGGER}>
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="summary" className={TAB_TRIGGER}>
+                Summary
+              </TabsTrigger>
+              <TabsTrigger value="raw" className={`${TAB_TRIGGER} text-[11px] sm:text-sm px-1 sm:px-3`}>
+                Telemetry Details
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="mt-3">
               {ticketOverview}
             </TabsContent>
             <TabsContent value="summary" className="mt-3">
-              <ScrollArea className="h-[320px] pr-3">
-                <JsonStructuredView
-                  value={"incident_summary" in item ? item.incident_summary : null}
-                  emptyLabel="No incident summary linked"
-                />
+              <ScrollArea className={`${PANEL} pr-3`}>
+                <div className="p-3">
+                  <PayloadSummaryView
+                    value={"incident_summary" in item ? item.incident_summary : null}
+                    emptyLabel="No incident summary linked"
+                  />
+                </div>
               </ScrollArea>
             </TabsContent>
             <TabsContent value="raw" className="mt-3">

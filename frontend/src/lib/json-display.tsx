@@ -68,7 +68,7 @@ function KeyValueTable({ data }: { data: Record<string, JsonValue> }) {
             <TableCell className="font-medium text-muted-foreground align-top">
               {humanizeKey(key)}
             </TableCell>
-            <TableCell className="font-mono text-xs break-all whitespace-pre-wrap">
+            <TableCell className="font-mono text-xs break-all whitespace-pre-wrap text-foreground">
               {typeof value === "object" && value !== null
                 ? JSON.stringify(value, null, 2)
                 : formatCell(value)}
@@ -100,7 +100,7 @@ function ObjectRowsTable({ rows }: { rows: Record<string, JsonValue>[] }) {
           Showing first {RECORDS_ROW_CAP} of {rows.length} records
         </p>
       )}
-      <div className="rounded-md border border-border overflow-x-auto">
+      <div className="rounded-md border border-border overflow-x-auto bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -238,10 +238,223 @@ export function JsonRawView({ value }: { value: unknown }) {
   if (parsed == null) return <EmptyState label="No raw payload linked" />;
 
   return (
-    <ScrollArea className="h-[320px] rounded-lg border border-border bg-muted/40">
-      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed">
+    <ScrollArea className="h-[min(420px,50vh)] rounded-lg border border-border bg-card text-card-foreground">
+      <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {JSON.stringify(parsed, null, 2)}
       </pre>
     </ScrollArea>
+  );
+}
+
+function asStringList(value: unknown): string[] {
+  const parsed = coerceJsonValue(value);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .flatMap((item) => {
+      if (item == null) return [];
+      if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+        return [String(item)];
+      }
+      if (typeof item === "object" && !Array.isArray(item)) {
+        const obj = item as Record<string, JsonValue>;
+        const id =
+          obj.error_code ?? obj.client_id ?? obj.machine_id ?? obj.id ?? obj.name ?? obj.value;
+        if (id != null && typeof id !== "object") return [String(id)];
+      }
+      return [];
+    })
+    .filter(Boolean);
+}
+
+function extractErrorCode(item: JsonValue): string | null {
+  if (typeof item === "string" || typeof item === "number") return String(item);
+  if (Array.isArray(item)) {
+    // consumer historically nested details oddly; take first usable code
+    for (const nested of item) {
+      const code = extractErrorCode(nested);
+      if (code) return code;
+    }
+    return null;
+  }
+  if (item && typeof item === "object") {
+    const obj = item as Record<string, JsonValue>;
+    const code = obj.error_code ?? obj.code;
+    if (code != null && typeof code !== "object") return String(code);
+  }
+  return null;
+}
+
+function buildErrorNameMap(metricsDetails: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  const parsed = coerceJsonValue(metricsDetails);
+  if (!Array.isArray(parsed)) return map;
+
+  for (const row of parsed) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const obj = row as Record<string, JsonValue>;
+    const code = obj.error_code ?? obj.code;
+    const name = obj.error_name ?? obj.description;
+    if (code != null && typeof code !== "object") {
+      map.set(
+        String(code),
+        name != null && typeof name !== "object" ? String(name) : "Unknown Error",
+      );
+    }
+  }
+  return map;
+}
+
+function CommaListSection({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      {values.length ? (
+        <p className="text-sm text-foreground leading-relaxed break-words">{values.join(", ")}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">None</p>
+      )}
+    </div>
+  );
+}
+
+function IdListTable({ title, values, idLabel }: { title: string; values: string[]; idLabel: string }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      {values.length ? (
+        <div className="rounded-md border border-border overflow-x-auto bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-14">#</TableHead>
+                <TableHead>{idLabel}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {values.map((id, idx) => (
+                <TableRow key={`${id}-${idx}`}>
+                  <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell className="font-mono text-xs text-foreground">{id}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground border border-dashed border-border rounded-lg px-3 py-4">
+          None linked
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Domain-aware summary for payload_summary / incident_summary. */
+export function PayloadSummaryView({
+  value,
+  emptyLabel = "No telemetry summary linked",
+}: {
+  value: unknown;
+  emptyLabel?: string;
+}) {
+  const parsed = coerceJsonValue(value);
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return <EmptyState label={emptyLabel} />;
+  }
+
+  const summary = parsed as Record<string, JsonValue>;
+  const regions = asStringList(summary.regions);
+  const topClients = asStringList(summary.top_clients);
+  const topHosts = asStringList(summary.top_hosts);
+  const topEndpoints = asStringList(summary.top_endpoints);
+  const nameByCode = buildErrorNameMap(summary.metrics_details);
+
+  const topErrorsRaw = Array.isArray(summary.top_errors) ? summary.top_errors : [];
+  const errorRows: { code: string; name: string }[] = [];
+  const seen = new Set<string>();
+
+  for (const item of topErrorsRaw) {
+    const code = extractErrorCode(item);
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    let name = nameByCode.get(code);
+    if (!name && item && typeof item === "object" && !Array.isArray(item)) {
+      const obj = item as Record<string, JsonValue>;
+      const n = obj.error_name ?? obj.description;
+      if (n != null && typeof n !== "object") name = String(n);
+    }
+    errorRows.push({ code, name: name ?? "Unknown Error" });
+  }
+
+  // If top_errors empty but metrics_details exists, show those
+  if (!errorRows.length && nameByCode.size) {
+    for (const [code, name] of nameByCode) {
+      errorRows.push({ code, name });
+    }
+  }
+
+  const reserved = new Set([
+    "regions",
+    "top_clients",
+    "top_hosts",
+    "top_endpoints",
+    "top_errors",
+    "metrics_details",
+  ]);
+  const scalarEntries = Object.entries(summary).filter(
+    ([key, val]) => !reserved.has(key) && (val === null || typeof val !== "object"),
+  );
+
+  return (
+    <div className="space-y-4 text-foreground">
+      <CommaListSection title="Regions" values={regions} />
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Top Errors
+        </h4>
+        {errorRows.length ? (
+          <div className="rounded-md border border-border overflow-x-auto bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Error Code</TableHead>
+                  <TableHead>Error Name</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {errorRows.map((row) => (
+                  <TableRow key={row.code}>
+                    <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                    <TableCell className="text-sm">{row.name}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground border border-dashed border-border rounded-lg px-3 py-4">
+            No top errors linked
+          </p>
+        )}
+      </div>
+
+      <IdListTable title="Top Clients" values={topClients} idLabel="Client ID" />
+      <IdListTable title="Top Hosts" values={topHosts} idLabel="Host / Machine ID" />
+      {topEndpoints.length > 0 && (
+        <CommaListSection title="Top Endpoints" values={topEndpoints} />
+      )}
+
+      {scalarEntries.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Other Metrics
+          </h4>
+          <div className="rounded-md border border-border overflow-x-auto bg-card">
+            <KeyValueTable data={Object.fromEntries(scalarEntries)} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
