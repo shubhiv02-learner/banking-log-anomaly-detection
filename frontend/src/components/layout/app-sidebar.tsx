@@ -39,7 +39,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">
-                SentinelIQ
+                SentryyIQ
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Observability
@@ -78,7 +78,7 @@ export function AppSidebar() {
             <div className="flex flex-col leading-tight">
               <span className="text-xs font-medium">Ops Engineer</span>
               <span className="text-[10px] text-muted-foreground">
-                ops@sentineliq.io
+                ops@sentryyiq.io
               </span>
             </div>
           )}
