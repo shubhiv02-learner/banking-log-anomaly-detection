@@ -1,9 +1,17 @@
 import type { Alert, WindowMetric,Ticket, WindowMetricFull } from "./types";
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").trim();
+
+/** Join base + path without producing `//` before the endpoint. */
+function joinApiUrl(base: string, path: string): string {
+  const normalizedBase = base.replace(/\/+$/, "");
+  const normalizedPath = path.replace(/^\/+/, "");
+  if (!normalizedBase) return `/${normalizedPath}`;
+  return `${normalizedBase}/${normalizedPath}`;
+}
 
 async function http<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(joinApiUrl(BASE_URL, path), {
     headers: { Accept: "application/json" },
   });
   if (!res.ok) {
