@@ -185,12 +185,12 @@ def get_window_metric_details_by_id(db, metric_id: int):
     
     if row:
         print("Fetched data from DB successfully!")
-        # Manually return a clean Python dict. 
-        # FastAPI handles serializing native dicts perfectly without crashing.
+        # Normalize JSONB string/double-encoded values before FastAPI response validation.
+        from schemas import _parse_json_field
         return {
             "id": row.id,
-            "payload_json": row.payload_json,
-            "payload_summary": row.payload_summary
+            "payload_json": _parse_json_field(row.payload_json),
+            "payload_summary": _parse_json_field(row.payload_summary),
         }
     
     return None

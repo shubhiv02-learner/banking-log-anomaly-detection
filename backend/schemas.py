@@ -7,17 +7,20 @@ from typing import Dict, Any, List, Union, Optional
 
 
 def _parse_json_field(value: Any) -> Any:
-    """JSONB sometimes comes back as a double-encoded JSON string."""
+    """Decode JSONB values that were stored as (possibly double-encoded) JSON strings."""
     if value is None or isinstance(value, (dict, list)):
         return value
     if isinstance(value, (bytes, bytearray)):
         value = value.decode("utf-8")
-    if isinstance(value, str):
+    # JSONB string columns often need more than one loads() pass.
+    for _ in range(3):
+        if not isinstance(value, str):
+            break
         text = value.strip()
         if not text:
             return None
         try:
-            return json.loads(text)
+            value = json.loads(text)
         except json.JSONDecodeError:
             return value
     return value 
@@ -89,14 +92,11 @@ class WindowMetricResponse(BaseModel):
     cusum : float
     persistence_score : float
     incident_probability : float
-    payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
-    payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
+    # Intentionally omit payload_json / payload_summary here.
+    # List endpoints defer those columns; DB often stores them as JSON strings,
+    # which breaks response_model=Union[dict, list] validation (Swagger 500).
+    # Fetch payloads via GET /window-metrics/details/{id}.
     created_at: datetime
-
-    @field_validator("payload_json", "payload_summary", mode="before")
-    @classmethod
-    def parse_payload_fields(cls, value: Any) -> Any:
-        return _parse_json_field(value)
 
     class Config:
         from_attributes = True
@@ -104,13 +104,9 @@ class WindowMetricResponse(BaseModel):
 
 class WindowMetricsDetail(BaseModel):
     id: int
-    payload_json: Optional[Union[Dict[str, Any], List[Any]]] = None
-    payload_summary: Optional[Union[Dict[str, Any], List[Any]]] = None
-
-    @field_validator("payload_json", "payload_summary", mode="before")
-    @classmethod
-    def parse_payload_fields(cls, value: Any) -> Any:
-        return _parse_json_field(value)
+    # Any: values are normalized to dict/list in crud before response validation.
+    payload_json: Optional[Any] = None
+    payload_summary: Optional[Any] = None
 
     class Config:
         from_attributes = True
