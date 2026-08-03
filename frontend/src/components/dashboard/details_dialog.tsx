@@ -27,7 +27,7 @@ interface IncidentDetailsDialogProps {
 }
 
 const PANEL =
-  "h-[min(420px,50vh)] overflow-y-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable] [scrollbar-width:thin]";
+  "h-[min(420px,50vh)] overflow-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable_both-edges] [scrollbar-width:thin]";
 const TAB_TRIGGER =
   "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground";
 

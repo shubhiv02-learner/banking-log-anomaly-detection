@@ -99,8 +99,9 @@ function ObjectRowsTable({ rows }: { rows: Record<string, JsonValue>[] }) {
           Showing first {RECORDS_ROW_CAP} of {rows.length} records
         </p>
       )}
-      <div className="rounded-md border border-border overflow-x-auto bg-card">
-        <Table>
+      {/* Plain <table> avoids ui/table's nested overflow-auto so PANEL shows both scrollbars. */}
+      <div className="rounded-md border border-border bg-card">
+        <table className="min-w-max w-full caption-bottom text-sm">
           <TableHeader>
             <TableRow>
               {columns.map((col) => (
@@ -121,7 +122,7 @@ function ObjectRowsTable({ rows }: { rows: Record<string, JsonValue>[] }) {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </table>
       </div>
     </div>
   );
@@ -237,7 +238,7 @@ export function JsonRawView({ value }: { value: unknown }) {
   if (parsed == null) return <EmptyState label="No raw payload linked" />;
 
   return (
-    <div className="h-[min(420px,50vh)] overflow-y-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable] [scrollbar-width:thin]">
+    <div className="h-[min(420px,50vh)] overflow-auto rounded-lg border border-border bg-card text-card-foreground [scrollbar-gutter:stable_both-edges] [scrollbar-width:thin]">
       <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {JSON.stringify(parsed, null, 2)}
       </pre>
