@@ -4,6 +4,17 @@ type Theme = "light" | "dark";
 
 const STORAGE_KEY = "sentineliq-theme";
 
+function readStoredTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    /* ignore */
+  }
+  return "dark";
+}
+
 const ThemeContext = createContext<{
   theme: Theme;
   toggle: () => void;
@@ -11,18 +22,7 @@ const ThemeContext = createContext<{
 }>({ theme: "dark", toggle: () => {}, setTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-
-  useEffect(() => {
-    const stored = (typeof window !== "undefined"
-      ? (localStorage.getItem(STORAGE_KEY) as Theme | null)
-      : null);
-    const prefersDark =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-    const initial: Theme = stored ?? (prefersDark ? "dark" : "light");
-    setThemeState(initial);
-  }, []);
+  const [theme, setThemeState] = useState<Theme>(readStoredTheme);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -48,3 +48,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
+
+/** Inline boot script: default dark unless user explicitly chose light. */
+export const THEME_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(t!=="light")document.documentElement.classList.add("dark");}catch(e){document.documentElement.classList.add("dark");}})();`;
