@@ -136,11 +136,11 @@ No manual engineering notes have been appended yet.`}
         </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground border-2 border-border shadow-2xl ring-1 ring-foreground/15">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground border-2 border-primary/40 shadow-2xl ring-2 ring-foreground/25">
         <DialogHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge priority={item.priority} />
-            <StatusPill status={item.status} label={!isAlert && item.status === "ACKNOWLEDGED" ? "ASSIGNED" : undefined} />
+            <StatusPill status={item.status} />
           </div>
           <DialogTitle className="text-xl font-semibold tracking-tight flex items-center gap-2">
             {isAlert ? (

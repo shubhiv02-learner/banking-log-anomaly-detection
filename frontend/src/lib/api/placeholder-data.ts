@@ -136,7 +136,7 @@ const TRENDS: Record<string, WindowMetric[]> = Object.fromEntries(
 
 const ALERTS: Alert[] = (() => {
   const rand = mulberry32(42);
-  const statuses: AlertStatus[] = ["OPEN"] //, "ACKNOWLEDGED", "RESOLVED"];
+  const statuses: AlertStatus[] = ["OPEN"]; //, "ASSIGNED", "RESOLVED"];
   const items: Alert[] = [];
   let id = 1001;
   for (const service of SERVICES) {

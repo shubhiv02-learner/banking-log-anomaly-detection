@@ -9,7 +9,7 @@ export type JSONArray = JSONValue[];
 
 export type Priority = "Critical" | "High" | "Medium";
 
-export type AlertStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
+export type AlertStatus = "OPEN" | "ASSIGNED" | "RESOLVED" | "CLOSED";
 
 export interface Alert {
   id: number;

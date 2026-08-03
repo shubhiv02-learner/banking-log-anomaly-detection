@@ -40,9 +40,9 @@ export const Route = createFileRoute("/alerts")({
 });
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
-const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
+const STATUSES: AlertStatus[] = ["OPEN", "ASSIGNED", "RESOLVED"];
 /** Visible page length for the details table; header counts still use full fetch. */
-const TABLE_PAGE_SIZE = 20;
+const TABLE_PAGE_SIZE = 15;
 
 function AlertsPage() {
   const [all, setAll] = useState<Alert[]>([]);
@@ -179,7 +179,7 @@ function AlertsPage() {
                 <TableHead className="w-[12%]">Final Score</TableHead>
                 <TableHead className="w-[14%]">Status</TableHead>
                 <TableHead className="w-[22%] text-right">Created</TableHead>
-                <TableHead className="w-[12%] text-center">Actions</TableHead>
+                <TableHead className="w-[12%] text-center align-middle">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -206,8 +206,10 @@ function AlertsPage() {
                       addSuffix: true,
                     })}
                   </TableCell>
-                  <TableCell className="w-[12%] text-center">
-                    <IncidentDetailsDialog item={a} />
+                  <TableCell className="w-[12%] text-center align-middle">
+                    <div className="flex items-center justify-center">
+                      <IncidentDetailsDialog item={a} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

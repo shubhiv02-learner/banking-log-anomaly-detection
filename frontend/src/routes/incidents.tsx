@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
-import { StatusPill, statusDisplayLabel } from "@/components/dashboard/status-pill";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
 import { api } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
@@ -43,9 +43,9 @@ export const Route = createFileRoute("/incidents")({
 });
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
-const STATUSES: AlertStatus[] = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
+const STATUSES: AlertStatus[] = ["OPEN", "ASSIGNED", "RESOLVED"];
 /** Visible page length for the details table; header counts still use full fetch. */
-const TABLE_PAGE_SIZE = 20;
+const TABLE_PAGE_SIZE = 15;
 
 function IncidentsPage() {
   const [all, setAll] = useState<Ticket[]>([]);
@@ -78,8 +78,8 @@ function IncidentsPage() {
     },
     {
       p: "ASSIGNED",
-      n: all.filter((a) => a.status === "ACKNOWLEDGED").length,
-      statusPill: "ACKNOWLEDGED" as AlertStatus,
+      n: all.filter((a) => a.status === "ASSIGNED").length,
+      statusPill: "ASSIGNED" as AlertStatus,
     },
     { p: "Resolved", n: all.filter((a) => a.status === "RESOLVED").length },
     { p: "Total Open", n: all.filter((a) => a.status === "OPEN").length },
@@ -97,7 +97,7 @@ function IncidentsPage() {
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-mono text-2xl font-semibold">{n}</span>
                 {statusPill ? (
-                  <StatusPill status={statusPill} label="ASSIGNED" />
+                  <StatusPill status={statusPill} />
                 ) : p === "Total Open" ? (
                   <StatusPill status="OPEN" />
                 ) : p === "Resolved" ? (
@@ -135,7 +135,7 @@ function IncidentsPage() {
                 <SelectItem value="all">All statuses</SelectItem>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {statusDisplayLabel(s, "incidents")}
+                    {s}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -160,7 +160,7 @@ function IncidentsPage() {
                 <TableHead className="w-[10%]">Priority</TableHead>
                 <TableHead className="w-[12%]">Status</TableHead>
                 <TableHead className="w-[15%] text-right">Assigned On</TableHead>
-                <TableHead className="w-[10%] text-center">Actions</TableHead>
+                <TableHead className="w-[10%] text-center align-middle">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -177,10 +177,7 @@ function IncidentsPage() {
                     <PriorityBadge priority={a.priority} />
                   </TableCell>
                   <TableCell className="w-[12%]">
-                    <StatusPill
-                      status={a.status}
-                      label={statusDisplayLabel(a.status, "incidents")}
-                    />
+                    <StatusPill status={a.status} />
                   </TableCell>
                   <TableCell
                     className="w-[15%] text-right text-xs text-muted-foreground whitespace-nowrap"
@@ -190,8 +187,10 @@ function IncidentsPage() {
                       addSuffix: true,
                     })}
                   </TableCell>
-                  <TableCell className="w-[10%] text-center">
-                    <IncidentDetailsDialog item={a} />
+                  <TableCell className="w-[10%] text-center align-middle">
+                    <div className="flex items-center justify-center">
+                      <IncidentDetailsDialog item={a} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
