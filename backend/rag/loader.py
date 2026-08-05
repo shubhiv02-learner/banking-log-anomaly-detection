@@ -12,7 +12,7 @@ class DocumentLoader:
     """Discovers supported knowledge base documents."""
     def __init__(self, knowledge_base: Path = KNOWLEDGE_BASE):
         self.knowledge_base = knowledge_base
-        print("Initialized")
+        logger.debug("DocumentLoader initialized path=%s", knowledge_base)
     def load_documents(self) -> list[Document]:
         """
         Scan the knowledge base and return supported documents.

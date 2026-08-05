@@ -1,4 +1,4 @@
-# SentinelIQ – Banking Anomaly Detection & Observability Platform
+# SentryyIQ – Banking Anomaly Detection & Observability Platform
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue)
 ![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-orange)
@@ -10,7 +10,7 @@
 
 # Overview
 
-SentinelIQ is a hybrid statistical + machine learning anomaly detection framework designed for operational banking telemetry and observability monitoring.
+SentryyIQ is a hybrid statistical + machine learning anomaly detection framework designed for operational banking telemetry and observability monitoring.
 
 The platform combines:
 
@@ -221,7 +221,7 @@ Implemented unsupervised anomaly detection models:
 # Project Structure
 
 ```text
-SentinelIQ/
+banking-log-anomaly-detection/
 │
 ├── notebooks/              # Google Colab notebooks. All logic in notebook
 ├── src/                    # Core anomaly detection modules to be added
@@ -263,7 +263,7 @@ SentinelIQ/
 
 # Future Vision
 
-SentinelIQ is evolving toward a multi-layer anomaly intelligence platform combining:
+SentryyIQ is evolving toward a multi-layer anomaly intelligence platform combining:
 
 * statistical observability,
 * machine learning anomaly detection,
@@ -288,7 +288,7 @@ Run the notebooks directly in Google Colab:
 
 ```python
 # Open notebook
-SentinelIq.ipynb
+SentryyIQ.ipynb
 ```
 
 ---

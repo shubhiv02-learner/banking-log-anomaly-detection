@@ -3,6 +3,11 @@ import pandas as pd
 import json
 from collections import OrderedDict
 
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
+
 def build_payload_details(raw_window, ERROR_MAPPING):
     try:
         # --- 1. Extract records safely ---
@@ -75,9 +80,8 @@ def build_payload_details(raw_window, ERROR_MAPPING):
         return payload_summary, payload_json
 
     except Exception as e:
-        print(f"Error {e}")
-        input("Error in save payload: ")
-        return
+        logger.exception("Failed to build payload details: %s", e)
+        return None, None
 
 def enrich_incident_details(error_codes, ERROR_MAPPING):
     incident_details = []

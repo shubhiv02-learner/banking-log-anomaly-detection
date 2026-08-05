@@ -1,26 +1,10 @@
-# create_tables.py
-
 from backend.database import engine
 from backend.db_models import Base
+from backend.logging_config import get_logger, setup_logging
+
+setup_logging()
+logger = get_logger(__name__)
 
 Base.metadata.create_all(bind=engine)
 
-print("Tables created successfully")
-
-#For now using synchronous connection
-"""
-import asyncio
-
-from database import engine
-from db_models import Base
-
-async def create_tables():
-
-    async with engine.begin() as conn:
-        await conn.run_sync(
-            Base.metadata.create_all
-        )
-
-asyncio.run(create_tables())
-print("Tables created successfully")
-"""
+logger.info("Database tables created (create_all)")

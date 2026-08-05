@@ -1,3 +1,7 @@
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 SERVICE_LATENCY_MAP = {
     "payment-api": 150,
     "auth-service": 80,
@@ -111,7 +115,7 @@ def generate_executive_summary(df):
     and infrastructure resource utilization.
 
     """
-    print(summary)
+    logger.debug("Executive summary generated length=%s", len(summary))
 
     return summary
 
@@ -129,7 +133,7 @@ def write_pdf_report(file_path, content):
         bottomMargin=30
     )
     pdf.build(content)
-    print(f"PDF generated successfully: {file_path}")
+    logger.info("PDF generated path=%s", file_path)
 
 def generate_executive_summary_report(df):
     from reportlab.platypus import (Paragraph, Spacer, Image)
@@ -200,7 +204,7 @@ def generate_executive_summary_report(df):
     high-severity anomalies require operational review.
     """
     summary = summary + executive_summary_text
-    print(summary)
+    logger.debug("Appending executive summary section to PDF report")
     content.append(Paragraph(summary, styles['BodyText']))
 
     content.append(Spacer(1, 15))

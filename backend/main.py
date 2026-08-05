@@ -1,22 +1,37 @@
 import re
-from fastapi import FastAPI, Depends, HTTPException, logger
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session, defer
 from fastapi.middleware.cors import CORSMiddleware
-from notification import notify_n8n
-from database import SessionLocal
-import crud  as crud
-import schemas as schemas
-from db_models import  Ticket, UserMaster
-from notification import notify_n8n
+from .notification import notify_n8n
+from .database import SessionLocal
+import backend.crud  as crud
+import backend.schemas as schemas
+from .db_models import  Ticket, UserMaster, Alert, WindowMetrics, IncidentAssignmentHistory
+
 from rapidfuzz import process, fuzz
-from config import (
+from .config import (
     N8N_ASSIGN_WEBHOOK,
     N8N_RESOLVE_WEBHOOK,
     N8N_CLOSE_WEBHOOK,
 )
+from .logging_config import get_logger, setup_logging
+
+logger = get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()
+    logger.info("SentryyIQ API starting")
+    yield
+    logger.info("SentryyIQ API shutting down")
+
 
 app = FastAPI(
-    title="SentryyIQ API"
+    title="SentryyIQ API",
+    lifespan=lifespan,
 )
 
 # CORS configuration
@@ -171,40 +186,6 @@ def recent_window_metrics(
 ):
 
     rows = crud.get_recent_window_metrics(db)
-    # #region agent log
-    try:
-        import json as _json, time as _time, os as _os
-        sample = rows[0] if rows else None
-        # Accessing deferred attrs would lazy-load; only log column keys present without forcing payload load.
-        payload = {
-            "sessionId": "f2332d",
-            "runId": "post-fix-exclude-payload",
-            "hypothesisId": "EXCLUDE",
-            "location": "main.py:recent_window_metrics",
-            "message": "list response excludes payload fields from schema",
-            "data": {
-                "row_count": len(rows),
-                "response_model_has_payload_json": "payload_json" in schemas.WindowMetricResponse.model_fields,
-                "sample_id": getattr(sample, "id", None),
-            },
-            "timestamp": int(_time.time() * 1000),
-        }
-        print(f"[agent-dbg] {payload}")
-        for _path in (
-            "C:/Shubhi/banking-log-anomaly-detection/.cursor/debug-f2332d.log",
-            ".cursor/debug-f2332d.log",
-            "debug-f2332d.log",
-        ):
-            try:
-                _os.makedirs(_os.path.dirname(_path) or ".", exist_ok=True)
-                with open(_path, "a", encoding="utf-8") as _f:
-                    _f.write(_json.dumps(payload) + "\n")
-                break
-            except Exception:
-                continue
-    except Exception:
-        pass
-    # #endregion
     return rows
 
 @app.get(
@@ -293,7 +274,6 @@ def get_agent_incidents(
         skip=skip,
         limit=limit
     )
-    print(incidents)
     return incidents
 
 
@@ -359,7 +339,7 @@ def get_assignment_history(
         )
     
     incident_no = match[-1]
-    print(f"Extracted incident number from input to get assignment history: {incident_no}", flush=True)
+    logger.debug("Assignment history requested incident_no=%s", incident_no)
     assignments = crud.get_assignment_history(
         db=db,
         ticket_id=incident_no
@@ -378,7 +358,12 @@ def assign_incident(
     request: schemas.IncidentAssignmentRequest,
     db: Session = Depends(get_db)
 ):
-    print(request, flush=True) #Check the request object
+    logger.info(
+        "Incident assign request ticket=%s action=%s assigned_to=%s",
+        request.ticket_details,
+        request.action,
+        request.assigned_to,
+    )
     # Extract the last number mentioned
     match = re.findall(r"\d+", request.ticket_details)
 
@@ -398,7 +383,6 @@ def assign_incident(
         .order_by(Ticket.created_at.desc())
         .first()
     )
-    print(f"Incident found: {incident}", flush=True)
 
     if request.action == schemas.IncidentAction.ASSIGNED and request.assigned_to == "SYSTEM":
         return {
@@ -406,13 +390,12 @@ def assign_incident(
             "message": "assigned_to is required for ASSIGNED action."
         }
     if incident is None:
-        print("Incident not found.", flush=True)
+        logger.error("Assign failed — incident not found incident_no=%s", incident_no)
         return {
             "status": "failed",
             "message": "Incident not found, recheck the ticket number"
         }
     result = get_assignee(request.assigned_to, users)
-    print(f"Assignee resolution result: {result}", flush=True)
     if result["status"] not in ("system", "found"):
         return {
             "status": result["status"],
@@ -421,7 +404,6 @@ def assign_incident(
             }
     user_assignee = result["assignee"].upper() if result["assignee"] else None
     assignee_email = result["email"]
-    print(f"Resolved assignee: {user_assignee}, email: {assignee_email},incident assignee: {incident.assignee}, action {request.action}", flush=True)
     
     if incident.assignee == user_assignee and request.action == schemas.IncidentAction.ASSIGNED:
         return {
@@ -456,7 +438,12 @@ def assign_incident(
                 "message": "Remarks are mandatory to provide for RESOLVED or CLOSED actions."
          }
         
-    print(f"Proceeding to assign incident {incident.ticket_id} to {user_assignee} with action {request.action} and preventive action: {request.prevt_remarks}", flush=True)
+    logger.info(
+        "Applying incident update ticket_id=%s assignee=%s action=%s",
+        incident.ticket_id,
+        user_assignee,
+        request.action,
+    )
     
     assignment = crud.assign_incident(
         db=db,
@@ -485,14 +472,14 @@ def assign_incident(
         }
 
         try:
-            print("=" * 60)
-            print("Calling n8n webhook", flush=True)
-            print("URL:", N8N_ASSIGN_WEBHOOK)
-            print("Payload:", payload)
+            logger.info(
+                "Calling n8n assign webhook ticket_id=%s url=%s",
+                incident.ticket_id,
+                N8N_ASSIGN_WEBHOOK,
+            )
             notify_n8n(N8N_ASSIGN_WEBHOOK, payload)
-        except Exception as ex:
-            print(f"Failed to notify n8n: {ex}", flush=True)
-            logger.exception("Failed to notify n8n")
+        except Exception:
+            logger.exception("Failed to notify n8n assign webhook")
         return {
             "action": "ASSIGNED",
             "message": f"Incident {incident.ticket_id} assigned successfully to {user_assignee}."
@@ -520,7 +507,6 @@ def get_agent_alert_details_by_id(
 ):
     # Extract the last number mentioned
     match = re.findall(r"\d+", ind_details)
-    print(f"Extracted ticket ID from input: {match}", flush=True)
 
     if match:
         ticket_id = match[-1]
@@ -552,7 +538,6 @@ def get_agent_alert_payload_by_id(
 ):
     # Extract the last number mentioned
     match = re.findall(r"\d+", ind_details)
-    print(f"Extracted ticket ID from input: {match}, in raw data", flush=True)
 
     if match:
         ticket_id = match[-1]
@@ -561,12 +546,9 @@ def get_agent_alert_payload_by_id(
             status_code=404,
             detail="Alert details not found."
         )
-        print("Calling crud to get payload")
         json_payload = crud.get_agent_alert_payload_by_id(
             db,ticket_id
         )
-        print("After payload extraction")
-        
 
         return json_payload
 

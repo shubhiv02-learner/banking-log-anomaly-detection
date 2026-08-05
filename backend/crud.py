@@ -1,11 +1,13 @@
 from datetime import datetime
 import re
-from unittest import result
 
 from sqlalchemy import func, case
 from sqlalchemy.orm import defer
-from db_models import Alert, WindowMetrics, Ticket, IncidentAssignmentHistory, UserMaster
-import schemas as schemas
+from .db_models import Alert, WindowMetrics, Ticket, IncidentAssignmentHistory, UserMaster
+import backend.schemas as schemas
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def get_alerts(
         db,
@@ -20,7 +22,6 @@ def get_alerts(
         .limit(limit)
         .all()
     )
-    print("Fetched alerts:", len(alerts))  # debug line
     return alerts
 
 
@@ -150,7 +151,6 @@ def get_window_metric_by_id(
         .filter(WindowMetrics.id == metric_id)
         .first()
     )
-    print("No of Metrics")
     return metrics
 """
 def get_window_metric_details_by_id(db, metric_id: int):
@@ -212,8 +212,8 @@ def get_incidents(
         .limit(limit)
         .all()
     )
-    print("Fetched incidents:", len(incidents))  # debug line
     return incidents
+
 
 def get_incidents_by_id(db, alert_id: int):
     
@@ -223,7 +223,6 @@ def get_incidents_by_id(db, alert_id: int):
         .options(defer(Ticket.incident_summary))
         .first()
     )
-    print("Fetched incidents:", len(incidents))  # debug line
     return incidents
 
 
@@ -265,7 +264,7 @@ def get_agent_incidents(
         .limit(limit)
         .all()
     )
-    print("total:", total)
+    logger.debug("Agent incidents listed total=%s returned=%s", total, len(incidents))
     return {
         "total": total,
         "latest_count": len(incidents),
@@ -333,14 +332,19 @@ def assign_incident(
     incident.assignee = (assigned_to or "").upper()
     incident.status = action
     incident.updated_at = datetime.utcnow()
-    print(f"Assigning preventive remarks in crud: {prevt_remarks}", flush=True)
-    if incident.status  == schemas.IncidentAction.CLOSED:
+    if incident.status == schemas.IncidentAction.CLOSED:
         resolution, preventive_action = get_preventive_actions(remarks)
         incident.resolution = resolution
         incident.preventive_action = preventive_action
     db.commit()
 
     db.refresh(history)
+    logger.info(
+        "Updated incident ticket_id=%s action=%s assignee=%s",
+        incident.ticket_id,
+        action,
+        incident.assignee,
+    )
 
     return history
 
@@ -367,7 +371,11 @@ def get_preventive_actions(remarks: str | None) -> tuple[str | None, str | None]
     )
     resolution = resolution_match.group(1).strip() if resolution_match else None
     preventive_action = preventive_match.group(1).strip() if preventive_match else None
-    print(f"Original remark {remarks} Extracted resolution: {resolution}, preventive_action: {preventive_action}", flush=True)
+    logger.debug(
+        "Parsed closure remarks resolution=%s preventive_action=%s",
+        resolution is not None,
+        preventive_action is not None,
+    )
     return resolution, preventive_action
 
 #*********************Alert Details for Agent

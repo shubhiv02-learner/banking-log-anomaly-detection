@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
 
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 SERVICE_LATENCY_MAP = {
     "payment-api": 150,
     "auth-service": 80,
@@ -67,9 +71,12 @@ def apply_ewma_detection(df, alpha=0.3):
         (df['ewma_latency_deviation_for_alert'].abs() > deviation_alert_threshold)
     )
 
-    print("EWMA detection completed.\n")
-    print(f"Raw Latency Plot Threshold (for dashboard): {raw_latency_plot_threshold}")
-    print(f"Deviation Alert Threshold (for detection): {deviation_alert_threshold}")
+    logger.info("EWMA detection completed")
+    logger.debug(
+        "EWMA thresholds plot=%s alert=%s",
+        raw_latency_plot_threshold,
+        deviation_alert_threshold,
+    )
     return df, raw_latency_plot_threshold # Return the threshold for raw latency for dashboard compatibility
 
 
@@ -98,9 +105,8 @@ def apply_cusum_detection(df):
 
     mu = df['latency_ms'].std()
     k = mu * 0.5
-    print(f"CUSUM Smoothing Factor (k): {k}")
     h = mu*5 #ideally should be 5 or 6
-    print(f"CUSUM Alert Threshold (for detection): {h}")
+    logger.debug("CUSUM parameters k=%s h=%s", k, h)
 
     # Target for deviation
     target = 0 # Ideally should be 0
@@ -114,7 +120,7 @@ def apply_cusum_detection(df):
     if not df.empty:
         prev_date = df['timestamp'].iloc[0].date()
     else:
-        print("DataFrame is empty, cannot apply CUSUM detection.")
+        logger.error("CUSUM skipped — empty dataframe")
         return df
 
     for i in range(len(df)):
@@ -136,7 +142,7 @@ def apply_cusum_detection(df):
     # Alert threshold
     df['cusum_alert'] = (df['cusum'] > h)
 
-    print("CUSUM detection completed.\n")
+    logger.info("CUSUM detection completed")
 
     return df
 
@@ -168,7 +174,7 @@ def calculate_persistence_score(df):
         persistence.append(count)
 
     df['persistence_score'] = persistence
-    print("Persistence scoring completed.\n")
+    logger.info("Persistence scoring completed")
 
     return df
 
@@ -191,13 +197,11 @@ def generate_correlation_analysis(df):
         ]
     ].corr().round(2)
 
-    print("\nCorrelation Matrix:\n")
-
     custom_labels = ['Latency', 'Errors',  'CPU','EWMA','CUSUM','PS','IP']
     correlation.columns = custom_labels
     correlation.index = custom_labels
-    print(correlation)
-    print('\n\n')
+    logger.info("Correlation analysis completed")
+    logger.debug("Correlation matrix:\n%s", correlation)
     return correlation
 
 

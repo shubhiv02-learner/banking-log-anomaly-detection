@@ -1,8 +1,11 @@
 import json
 
-from urllib import response
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+
+from backend.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def notify_n8n(webhook_url: str, payload: dict):
@@ -30,43 +33,51 @@ def notify_n8n(webhook_url: str, payload: dict):
     try:
         with urlopen(request, timeout=5) as response:
             body = response.read().decode("utf-8")
-
-            print("Response Status:", response.status, flush=True )
-            print("Response Body:", body)
+            logger.info(
+                "n8n webhook success status=%s url=%s",
+                response.status,
+                webhook_url,
+            )
+            logger.debug("n8n response body: %s", body)
 
             return {
-                    "success": True,
-                    "status": response.status,
-                    "response": body
-                }
-            
+                "success": True,
+                "status": response.status,
+                "response": body,
+            }
 
     except HTTPError as e:
-
-        print(f"n8n HTTP Error {e.code}: {e.reason}")
+        logger.error(
+            "n8n HTTP error code=%s reason=%s url=%s",
+            e.code,
+            e.reason,
+            webhook_url,
+        )
 
         return {
             "success": False,
             "status": e.code,
-            "error": str(e.reason)
+            "error": str(e.reason),
         }
 
     except URLError as e:
-
-        print(f"n8n URL Error: {e.reason}")
+        logger.error(
+            "n8n URL error reason=%s url=%s",
+            e.reason,
+            webhook_url,
+        )
 
         return {
             "success": False,
             "status": None,
-            "error": str(e.reason)
+            "error": str(e.reason),
         }
 
-    except Exception as ex:
-
-        print(f"n8n Error: {ex}")
+    except Exception:
+        logger.exception("n8n webhook failed url=%s", webhook_url)
 
         return {
             "success": False,
             "status": None,
-            "error": str(ex)
+            "error": "unexpected error",
         }
