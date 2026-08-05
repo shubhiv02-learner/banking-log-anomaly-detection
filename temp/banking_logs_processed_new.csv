@@ -10431,3 +10431,6 @@ timestamp,service,endpoint,region,latency_ms,cpu_usage,memory_usage,queue_lag,am
 23-06-2026 15:55,payment-api,/transfer,ap-southeast-1,67,28,775,9,3633.54,,Healthy,Success,4,4,0,CUST-112349,DEV-WIN-99325,4.9763
 23-06-2026 15:55,ledger-service,/balance_check,us-east-1,364,151,488,5,0,ERR-105,Medium,Failure,14,71,1,CUST-112349,DEV-WIN-99325,26.3
 23-06-2026 15:55,payment-api,/transfer,ap-southeast-1,13,85,507,32,497.69,ERR-903,Low,Failure,2,29,1,CUST-112349,DEV-WIN-99325,5.4287
+23-06-2026 15:55,payment-api,/transfer,ap-southeast-1,318,139,193,15,700.17,ERR-306,Medium,Failure,12,73,1,CUST-123456,DEV-MAC-0149A5,4.3953
+23-06-2026 15:55,payment-api,/withdrawal,ap-southeast-1,392,247,720,22,1020.93,,Normal,Success,2,9,0,CUST-109482,DEV-WIN-84725,8.693
+23-06-2026 15:55,ledger-service,/balance_check,us-west-2,165,33,436,13,0,ERR-103,Low,Failure,1,38,1,CUST-109482,DEV-MAC-75825,16.4667

@@ -8,7 +8,13 @@ Central configuration: [`logging_config.py`](../logging_config.py) at the reposi
 |------------|---------------------|---------|
 | `LOG_LEVEL` | `INFO`, `DEBUG`, `ERROR` | `INFO` |
 
-Logs go to **stdout** and `logs/application.log` (rotating, 5 MB × 5 files).
+Logs go to **stdout** and a **per-process** rotating file under the repo-root `logs/` directory (5 MB × 5 backups):
+
+```
+logs/application-{process}-{pid}.log
+```
+
+Examples: `application-consumer-12345.log`, `application-main-67890.log`. Each API, consumer, and producer process gets its own file so Windows rollover is not blocked by cross-process file locks. Rollover also tolerates rename failures without crashing logging.
 
 ## Format
 

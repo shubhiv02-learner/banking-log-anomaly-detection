@@ -120,6 +120,7 @@ try:
                     if len(records) == 0:
                         continue
 
+                    #print(f"Processing service={service} record_count={len(records)}")
                     compact_records = [
                         {
                             "timestamp": str(r.get("timestamp")),
@@ -131,7 +132,7 @@ try:
                         }
                         for r in records
                     ]
-                    logger.info(
+                    logger.debug(
                         "create_window_features input service=%s record_count=%s records=%s",
                         service,
                         len(records),
