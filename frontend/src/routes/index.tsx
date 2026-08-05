@@ -23,7 +23,7 @@ import { getServiceHealth } from "@/lib/service-health";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Executive Dashboard — SentinelIQ" },
+      { title: "Executive Dashboard — SentryyIQ" },
       {
         name: "description",
         content:

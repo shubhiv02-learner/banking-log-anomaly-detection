@@ -80,10 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "SentinelIQ — Observability Platform" },
+      { title: "SentryyIQ — Observability Platform" },
       { name: "description", content: "Real-time observability and anomaly detection for banking-grade services." },
-      { name: "author", content: "SentinelIQ" },
-      { property: "og:title", content: "SentinelIQ — Observability Platform" },
+      { name: "author", content: "SentryyIQ" },
+      { property: "og:title", content: "SentryyIQ — Observability Platform" },
       { property: "og:description", content: "Real-time observability and anomaly detection for banking-grade services." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

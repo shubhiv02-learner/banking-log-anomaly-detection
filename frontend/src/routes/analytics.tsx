@@ -33,7 +33,7 @@ import { api, serviceLabel } from "@/lib/api/client";
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Service Analytics — SentinelIQ" },
+      { title: "Service Analytics — SentryyIQ" },
       {
         name: "description",
         content: "Complete 3-tier multi-variable diagnostics engine.",

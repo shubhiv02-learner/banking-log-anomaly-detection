@@ -32,7 +32,7 @@ import type { Ticket, AlertStatus, Priority } from "@/lib/api/types";
 export const Route = createFileRoute("/incidents")({
   head: () => ({
     meta: [
-      { title: "Incidents Center — SentinelIQ" },
+      { title: "Incidents Center — SentryyIQ" },
       {
         name: "description",
         content: "Triage and filter active anomaly alerts across services.",

@@ -29,7 +29,7 @@ import type { Alert, AlertStatus, Priority, ServiceCount } from "@/lib/api/types
 export const Route = createFileRoute("/alerts")({
   head: () => ({
     meta: [
-      { title: "Alerts Center — SentinelIQ" },
+      { title: "Alerts Center — SentryyIQ" },
       {
         name: "description",
         content: "Triage and filter active anomaly alerts across services.",
