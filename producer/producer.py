@@ -20,14 +20,34 @@ setup_logging()
 logger = get_logger(__name__)
 
 
+def _compact_record(raw_value):
+    """Compact identifier/summary for delivery logs (avoid huge payloads)."""
+    try:
+        record = json.loads(raw_value.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError, TypeError):
+        return {"raw_bytes": len(raw_value) if raw_value is not None else 0}
+    keys = (
+        "timestamp",
+        "service",
+        "status",
+        "endpoint",
+        "error_code",
+        "client_id",
+        "message",
+    )
+    summary = {k: record[k] for k in keys if k in record}
+    return summary if summary else {k: record[k] for k in list(record)[:5]}
+
+
 def delivery_report(err, msg):
     if err is not None:
         logger.error("Kafka delivery failed: %s", err)
     else:
-        logger.debug(
-            "Kafka message delivered partition=%s offset=%s",
+        logger.info(
+            "Kafka message delivered partition=%s offset=%s record=%s",
             msg.partition(),
             msg.offset(),
+            _compact_record(msg.value()),
         )
 
 

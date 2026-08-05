@@ -120,6 +120,23 @@ try:
                     if len(records) == 0:
                         continue
 
+                    compact_records = [
+                        {
+                            "timestamp": str(r.get("timestamp")),
+                            "service": r.get("service"),
+                            "status": r.get("status"),
+                            "endpoint": r.get("endpoint"),
+                            "error_code": r.get("error_code"),
+                            "latency_ms": r.get("latency_ms"),
+                        }
+                        for r in records
+                    ]
+                    logger.info(
+                        "create_window_features input service=%s record_count=%s records=%s",
+                        service,
+                        len(records),
+                        compact_records,
+                    )
                     window_df = create_window_features(records)
                     ml_result = detector.score_window(window_df)
                     ensemble_input = {
@@ -261,7 +278,7 @@ try:
                 window_start = datetime.now(timezone.utc)
                 window_end = window_start + timedelta(minutes=WINDOW_SIZE_MINUTES)
                 logger.info(
-                    "Window buffers cleared; next window %s -> %s",
+                    "New window starting window_start=%s window_end=%s",
                     window_start.isoformat(),
                     window_end.isoformat(),
                 )
