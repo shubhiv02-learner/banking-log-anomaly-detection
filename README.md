@@ -1528,8 +1528,8 @@ SentryyIQ combines modern backend technologies, real-time event streaming, stati
 - `requirements.txt` — Python dependencies
 - `README.md` — Project overview and architecture
 
-Details in docs/FOLDER_STRUCTURE.md
-Check details here : (docs/FOLDER_STRUCTURE.md).
+
+[Check details here :](docs/FOLDER_STRUCTURE.md)
  
 ```
 
