@@ -4,7 +4,7 @@ SentryyIQ – banking log anomaly detection & observability. Layout below reflec
 
 ## Root
 
-- `backend/` — FastAPI app: DB models, CRUD, notifications, and RAG pipeline
+- `backend/` — FastAPI app: DB models, CRUD, and notifications
 - `frontend/` — Vite/React (TanStack) dashboard UI and Vercel deploy config
 - `consumer/` — Kafka (or stream) consumer that pulls logs for detection
 - `producer/` — Log/telemetry producer that publishes banking events
@@ -37,18 +37,8 @@ backend/
   create_tables.py
   requirements.txt
   data/
-    knowledgebase/
-      runbooks/
-      sla/                # e.g. payment-api SLA docs
-  rag/
-    chunkers/
-    embeddings/
-    loaders/
-    vectorstore/
-    config.py / loader.py / metadata.py / models.py / rag_models.py
   logs/
   test/
-    rag/
 ```
 
 ### Frontend (major folders only)

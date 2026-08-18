@@ -1508,7 +1508,7 @@ SentryyIQ combines modern backend technologies, real-time event streaming, stati
 ```
 ## Root
 
-- `backend/` — FastAPI app: DB models, CRUD, notifications, and RAG pipeline
+- `backend/` — FastAPI app: DB models, CRUD, and notifications
 - `frontend/` — Vite/React (TanStack) dashboard UI and Vercel deploy config
 - `consumer/` — Kafka (or stream) consumer that pulls logs for detection
 - `producer/` — Log/telemetry producer that publishes banking events
