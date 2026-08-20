@@ -16,8 +16,13 @@ Copy from [`.env.example`](../.env.example) into your local `.env`.
 
 ## Flow
 
-1. UI → `POST /copilot/search` or `POST /copilot/ask`
+1. UI → `POST /copilot/ask` (Answer: grounded reply + sources) or `POST /copilot/search` (Search: passages only, no answer)
 2. `CopilotService` → `resolve_acting_principal()` (config today)
 3. `SalverisClient.search/answer(..., acting_principal_id=...)`
 
-Header names sent to Salveris (provisional): `X-Calling-Platform-Id`, `X-Service-Principal-Id`, `X-Client-Secret`, `X-Acting-Principal-Id`.
+Salveris inbound contract:
+
+- `POST {SALVERIS_BASE_URL}/v1/knowledge/search`
+- `POST {SALVERIS_BASE_URL}/v1/knowledge/answer`
+- Headers: `Authorization: Bearer {SALVERIS_CLIENT_SECRET}`, `X-Salveris-Calling-Platform-Id`, `X-Salveris-Service-Principal-Id`, `X-Salveris-Acting-Principal-Id`
+- Body: `{ "query": "<text>" }` only (extra fields are rejected with 400 `Invalid request.`)

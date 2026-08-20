@@ -2,6 +2,13 @@
 
 Does NOT resolve acting principal — callers must pass acting_principal_id.
 Service credentials come from SalverisSettings (calling platform / service principal / secret).
+
+Contract (Salveris inbound):
+  POST /v1/knowledge/search
+  POST /v1/knowledge/answer
+  Headers: Authorization Bearer, X-Salveris-Calling-Platform-Id,
+           X-Salveris-Service-Principal-Id, X-Salveris-Acting-Principal-Id
+  Body: { "query": str, "as_of"?: datetime }  — extra fields are forbidden
 """
 
 from __future__ import annotations
@@ -36,29 +43,15 @@ class SalverisClient:
         return {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "X-Calling-Platform-Id": self._settings.calling_platform_id,
-            "X-Service-Principal-Id": self._settings.service_principal_id,
-            "X-Client-Secret": self._settings.client_secret,
-            "X-Acting-Principal-Id": acting_principal_id,
+            "Authorization": f"Bearer {self._settings.client_secret}",
+            "X-Salveris-Calling-Platform-Id": self._settings.calling_platform_id,
+            "X-Salveris-Service-Principal-Id": self._settings.service_principal_id,
+            "X-Salveris-Acting-Principal-Id": acting_principal_id,
         }
 
-    def _build_body(
-        self,
-        query: str,
-        *,
-        context: Optional[CopilotContext],
-    ) -> dict[str, Any]:
-        body: dict[str, Any] = {
-            "query": query,
-            "platform": "sentryyiq",
-        }
-        if context is not None:
-            ctx = context.model_dump(exclude_none=True)
-            if ctx.get("extra") == {}:
-                ctx.pop("extra", None)
-            if ctx:
-                body["context"] = ctx
-        return body
+    def _build_body(self, query: str) -> dict[str, Any]:
+        # KnowledgeSearch/AnswerRequestModel: extra="forbid" — query only.
+        return {"query": query}
 
     def _request(
         self,
@@ -132,12 +125,13 @@ class SalverisClient:
     ) -> CopilotSearchResponse:
         if not acting_principal_id:
             raise SalverisError("acting_principal_id is required")
+        _ = context  # Salveris body forbids extra fields; context stays SentryyIQ-only.
 
         raw = self._request(
             "POST",
             "/v1/knowledge/search",
             acting_principal_id=acting_principal_id,
-            json_body=self._build_body(query, context=context),
+            json_body=self._build_body(query),
         )
         return self._normalize_search(raw)
 
@@ -150,12 +144,13 @@ class SalverisClient:
     ) -> CopilotAskResponse:
         if not acting_principal_id:
             raise SalverisError("acting_principal_id is required")
+        _ = context  # Salveris body forbids extra fields; context stays SentryyIQ-only.
 
         raw = self._request(
             "POST",
             "/v1/knowledge/answer",
             acting_principal_id=acting_principal_id,
-            json_body=self._build_body(query, context=context),
+            json_body=self._build_body(query),
         )
         return self._normalize_answer(raw)
 
@@ -164,28 +159,36 @@ class SalverisClient:
         if not isinstance(raw, dict):
             return CopilotSearchResponse(hits=[])
 
-        items = raw.get("hits") or raw.get("results") or raw.get("evidence") or []
+        items = raw.get("search_results") or raw.get("hits") or raw.get("results") or []
         hits: list[EvidenceHit] = []
         for item in items:
             if not isinstance(item, dict):
                 continue
             title = (
-                item.get("title")
+                item.get("content_title")
+                or item.get("title")
                 or item.get("document_title")
                 or item.get("name")
                 or "Untitled"
             )
+            document_id = item.get("document_id")
             hits.append(
                 EvidenceHit(
                     title=str(title),
-                    snippet=item.get("snippet") or item.get("content") or item.get("text"),
-                    score=item.get("score") or item.get("relevance"),
-                    source=item.get("source") or item.get("document_type"),
-                    document_id=(
-                        str(item["document_id"])
-                        if item.get("document_id") is not None
-                        else None
+                    snippet=(
+                        item.get("chunk_text")
+                        or item.get("snippet")
+                        or item.get("content")
+                        or item.get("text")
                     ),
+                    score=(
+                        item.get("rerank_score")
+                        or item.get("hybrid_score")
+                        or item.get("score")
+                        or item.get("relevance")
+                    ),
+                    source=item.get("content_reference") or item.get("source"),
+                    document_id=str(document_id) if document_id is not None else None,
                 )
             )
         return CopilotSearchResponse(hits=hits)
@@ -201,23 +204,32 @@ class SalverisClient:
             or raw.get("text")
             or ""
         )
-        confidence = raw.get("confidence") or raw.get("confidence_level")
+        confidence_raw = raw.get("confidence") or raw.get("confidence_level")
+        if isinstance(confidence_raw, dict):
+            confidence = confidence_raw.get("level")
+        else:
+            confidence = confidence_raw
         if confidence is not None:
             confidence = str(confidence)
 
-        source_items = raw.get("sources") or raw.get("citations") or raw.get("hits") or []
+        source_items = raw.get("citations") or raw.get("sources") or raw.get("hits") or []
         sources: list[SourceRef] = []
         for item in source_items:
             if not isinstance(item, dict):
                 continue
-            title = item.get("title") or item.get("document_title") or item.get("name")
+            title = (
+                item.get("content_title")
+                or item.get("title")
+                or item.get("document_title")
+                or item.get("name")
+            )
             if not title:
                 continue
             sources.append(
                 SourceRef(
                     title=str(title),
-                    snippet=item.get("snippet") or item.get("content"),
-                    source=item.get("source") or item.get("document_type"),
+                    snippet=item.get("quote") or item.get("snippet") or item.get("content"),
+                    source=item.get("content_reference") or item.get("source"),
                 )
             )
 

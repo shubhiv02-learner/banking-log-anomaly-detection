@@ -4,11 +4,25 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from dotenv import load_dotenv
 
+# Repo root .env (not CWD — uvicorn may start from backend/ or elsewhere)
+_ROOT = Path(__file__).resolve().parents[3]
+_ENV_PATH = _ROOT / ".env"
+_VENV_ENV_PATH = _ROOT / ".venv" / ".env"
 
-load_dotenv()
+load_dotenv(dotenv_path=_ENV_PATH)
+if _VENV_ENV_PATH.exists():
+    load_dotenv(dotenv_path=_VENV_ENV_PATH)
+
+
+def _env(name: str) -> str:
+    raw = (os.getenv(name) or "").strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+        raw = raw[1:-1].strip()
+    return raw
 
 
 @dataclass(frozen=True)
@@ -22,13 +36,11 @@ class SalverisSettings:
 
 
 def get_salveris_settings() -> SalverisSettings:
-    base_url = (os.getenv("SALVERIS_BASE_URL") or "").strip().rstrip("/")
-    calling_platform_id = (os.getenv("SALVERIS_CALLING_PLATFORM_ID") or "").strip()
-    service_principal_id = (os.getenv("SALVERIS_SERVICE_PRINCIPAL_ID") or "").strip()
-    client_secret = (os.getenv("SALVERIS_CLIENT_SECRET") or "").strip()
-    default_acting_principal_id = (
-        os.getenv("SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID") or ""
-    ).strip()
+    base_url = _env("SALVERIS_BASE_URL").rstrip("/")
+    calling_platform_id = _env("SALVERIS_CALLING_PLATFORM_ID")
+    service_principal_id = _env("SALVERIS_SERVICE_PRINCIPAL_ID")
+    client_secret = _env("SALVERIS_CLIENT_SECRET")
+    default_acting_principal_id = _env("SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID")
 
     missing = [
         name
@@ -44,6 +56,7 @@ def get_salveris_settings() -> SalverisSettings:
     if missing:
         raise ValueError(
             "Salveris is not configured. Missing env vars: " + ", ".join(missing)
+            + f" (looked in {_ENV_PATH})"
         )
 
     return SalverisSettings(

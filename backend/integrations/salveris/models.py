@@ -1,4 +1,4 @@
-"""Provisional Salveris / Copilot models (align when Salveris OpenAPI is available)."""
+"""SentryyIQ Copilot models. Salveris HTTP bodies are mapped in SalverisClient."""
 
 from __future__ import annotations
 

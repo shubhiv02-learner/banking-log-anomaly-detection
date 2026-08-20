@@ -60,8 +60,14 @@ export function CopilotPanel() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Ask SentryyIQ Copilot">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          aria-label="Ask SentryyIQ Copilot"
+        >
           <MessageSquare className="h-4 w-4" />
+          <span className="hidden sm:inline">Copilot</span>
         </Button>
       </SheetTrigger>
       <SheetContent
@@ -71,7 +77,8 @@ export function CopilotPanel() {
         <SheetHeader>
           <SheetTitle>Ask SentryyIQ Copilot</SheetTitle>
           <SheetDescription>
-            Knowledge search and answers via Salveris (proxied by SentryyIQ).
+            Answer returns a grounded reply with sources. Search returns matching
+            passages only — no answer.
           </SheetDescription>
         </SheetHeader>
 
@@ -90,7 +97,7 @@ export function CopilotPanel() {
             variant={mode === "search" ? "default" : "outline"}
             onClick={() => setMode("search")}
           >
-            Evidence
+            Search
           </Button>
         </div>
 
@@ -113,6 +120,8 @@ export function CopilotPanel() {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Working…
             </>
+          ) : mode === "search" ? (
+            "Search"
           ) : (
             "Ask"
           )}
@@ -164,9 +173,9 @@ export function CopilotPanel() {
 
           {searchResult ? (
             <div className="space-y-3 pb-4">
-              <h3 className="text-sm font-semibold">Sources</h3>
+              <h3 className="text-sm font-semibold">Search</h3>
               {searchResult.hits.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No evidence hits.</p>
+                <p className="text-sm text-muted-foreground">No matching passages.</p>
               ) : (
                 <ul className="space-y-2">
                   {searchResult.hits.map((hit, i) => (
