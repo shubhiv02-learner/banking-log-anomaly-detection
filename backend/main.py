@@ -820,6 +820,54 @@ def get_assignee( assigned_to: str, users: list[UserMaster]):
     }
 
 ##################################################################
+# Copilot — Salveris knowledge (UI never calls Salveris directly)
+##################################################################
+
+from backend.integrations.salveris.exceptions import (
+    SalverisAuthError,
+    SalverisConfigError,
+    SalverisError,
+    SalverisUnavailable,
+)
+from backend.integrations.salveris.models import (
+    CopilotAskRequest,
+    CopilotAskResponse,
+    CopilotSearchRequest,
+    CopilotSearchResponse,
+)
+from backend.services.copilot_service import copilot_service
+
+
+def _map_salveris_http(exc: SalverisError) -> HTTPException:
+    if isinstance(exc, SalverisConfigError):
+        return HTTPException(status_code=503, detail=str(exc))
+    if isinstance(exc, SalverisAuthError):
+        return HTTPException(status_code=502, detail="Salveris authentication failed")
+    if isinstance(exc, SalverisUnavailable):
+        return HTTPException(status_code=502, detail="Salveris unavailable")
+    status = exc.status_code if exc.status_code and 400 <= exc.status_code < 500 else 502
+    return HTTPException(status_code=status, detail=str(exc))
+
+
+@app.post("/copilot/search", response_model=CopilotSearchResponse)
+def copilot_search(request: CopilotSearchRequest):
+    try:
+        return copilot_service.search(request.question, context=request.context)
+    except SalverisError as exc:
+        logger.error("Copilot search failed: %s", exc)
+        raise _map_salveris_http(exc) from exc
+
+
+@app.post("/copilot/ask", response_model=CopilotAskResponse)
+def copilot_ask(request: CopilotAskRequest):
+    try:
+        return copilot_service.ask(request.question, context=request.context)
+    except SalverisError as exc:
+        logger.error("Copilot ask failed: %s", exc)
+        raise _map_salveris_http(exc) from exc
+
+
+##################################################################
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

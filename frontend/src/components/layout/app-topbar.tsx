@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { CopilotPanel } from "@/components/copilot/copilot-panel";
 
 const TITLES: Record<string, string> = {
   "/": "Executive Dashboard",
@@ -17,7 +18,7 @@ const TITLES: Record<string, string> = {
 
 export function AppTopbar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const title = TITLES[pathname] ?? "SentinelIQ";
+  const title = TITLES[pathname] ?? "SentryyIQ";
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur">
@@ -36,6 +37,7 @@ export function AppTopbar() {
         <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px]">
           PROD
         </Badge>
+        <CopilotPanel />
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="h-4 w-4" />
         </Button>
