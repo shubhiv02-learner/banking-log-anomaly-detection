@@ -72,6 +72,8 @@ The portfolio contains complete demonstrations covering:
 
 - Conversational incident investigation
 - Root Cause Analysis (RCA)
+- In-dashboard Copilot (Answer + Search)
+- Grounded knowledge answers via Salveris
 - Runbook retrieval
 - Architecture documentation lookup
 - Error catalog search
@@ -216,9 +218,12 @@ Provides real-time visibility into platform health, operational risk, and incide
 
 Extends traditional observability with an intelligent operations assistant capable of investigating incidents using live operational data and enterprise knowledge.
 
+The dashboard Copilot panel talks only to SentryyIQ. SentryyIQ proxies knowledge requests to **Salveris** (`/v1/knowledge/answer` and `/v1/knowledge/search`). The browser never calls Salveris.
+
 **Capabilities**
 
-- Conversational incident investigation
+- In-dashboard Copilot: **Answer** (grounded reply + sources) and **Search** (matching passages, no answer)
+- Conversational incident investigation (n8n + Telegram)
 - Root Cause Analysis (RCA)
 - Incident summarization
 - Runbook retrieval
@@ -253,11 +258,8 @@ Built using a modular architecture that enables future expansion into a complete
 
 **Future Direction**
 
-- Enterprise Knowledge Intelligence integration
-- Retrieval-Augmented Generation (RAG)
-- Hybrid Search
+- Retrieval-Augmented Generation (RAG) beyond Salveris knowledge APIs
 - LangGraph multi-agent workflows
-- Enterprise knowledge repositories
 - Context engineering
 - Intelligent decision support
 
@@ -316,9 +318,15 @@ The platform separates telemetry processing, anomaly detection, operational inte
               │          │
               ▼          ▼
   ┌────────────────┐   ┌────────────────────┐
-  │ React Dashboard│   │ AI Operations      │
-  │ Operational UI │   │ Copilot (n8n + LLM)│
-  └────────────────┘   └────────────────────┘
+  │ React Dashboard│   │ Telegram Copilot   │
+  │ + Copilot Panel│   │ (n8n + LLM)        │
+  └───────┬────────┘   └────────────────────┘
+          │ POST /copilot/ask | /copilot/search
+          ▼
+  ┌────────────────────┐
+  │ Salveris Knowledge │
+  │ /v1/knowledge/*    │
+  └────────────────────┘
 ```
 
 ---
@@ -460,12 +468,17 @@ Operational teams gain real-time visibility into:
 
 The AI Operations Copilot extends operational intelligence by combining live operational data with enterprise knowledge.
 
-Using workflow orchestration through n8n and Large Language Models, the Copilot assists engineers by:
+Two Copilot surfaces are in use:
+
+- **Dashboard Copilot** — React panel in SentryyIQ. **Answer** calls `POST /copilot/ask` (Salveris grounded answer + citations). **Search** calls `POST /copilot/search` (matching passages only, no LLM answer). The UI never talks to Salveris.
+- **Telegram Copilot** — n8n workflows and an LLM for incident investigation, assignment, and resolution.
+
+Together they assist engineers by:
 
 - Investigating incidents
 - Performing Root Cause Analysis (RCA)
-- Retrieving runbooks
-- Searching architecture documentation
+- Retrieving runbooks and architecture documentation
+- Searching enterprise knowledge (Salveris)
 - Explaining operational anomalies
 - Supporting incident assignment
 - Guiding incident resolution
@@ -699,12 +712,13 @@ Interactive dashboards provide engineering teams with real-time visibility into 
 
 # 🤖 AI Operations Copilot
 
-The AI Operations Copilot extends traditional observability by combining live operational intelligence with workflow automation and Large Language Models to provide conversational operational assistance.
+The AI Operations Copilot extends traditional observability by combining live operational intelligence with workflow automation, Salveris knowledge APIs, and Large Language Models to provide conversational operational assistance.
 
-The Copilot retrieves operational data, investigates incidents, accesses enterprise documentation, and assists engineers throughout the complete incident lifecycle.
+The in-dashboard Copilot retrieves grounded answers and search passages from Salveris (proxied by SentryyIQ). The Telegram Copilot retrieves operational data, investigates incidents, and assists engineers throughout the complete incident lifecycle.
 
 **Capabilities**
 
+- Dashboard Copilot: Answer (grounded reply + sources) and Search (passages only)
 - Conversational incident investigation
 - Root Cause Analysis (RCA)
 - Incident summarization
@@ -1032,6 +1046,7 @@ This workflow minimizes context switching by providing all relevant operational 
 - Detailed telemetry inspection
 - Statistical and machine learning evidence
 - End-to-end incident investigation support
+- In-dashboard Copilot (Answer + Search via Salveris)
 
 # 🤖 AI Operations Copilot
 
@@ -1039,7 +1054,12 @@ The AI Operations Copilot transforms traditional observability into an intellige
 
 Rather than requiring engineers to manually navigate dashboards, correlate telemetry, and search documentation, the Copilot enables natural language interaction with operational data, incident records, and enterprise knowledge.
 
-Built using **n8n workflow automation**, **Google Gemini**, and enterprise knowledge sources, the Copilot acts as an intelligent operational assistant capable of investigating incidents, retrieving contextual information, and supporting engineers throughout the complete incident lifecycle.
+Two surfaces are implemented:
+
+1. **Dashboard Copilot (Salveris)** — a panel in the React UI. **Answer** returns a grounded reply, confidence, and sources. **Search** returns matching passages only (no answer). The browser calls SentryyIQ only (`POST /copilot/ask`, `POST /copilot/search`). SentryyIQ authenticates to Salveris with a service principal and acting-user identity, then calls `/v1/knowledge/answer` or `/v1/knowledge/search`.
+2. **Telegram Copilot (n8n)** — workflow automation with **Google Gemini** for incident investigation, assignment, and resolution.
+
+See [docs/SALVERIS_COPILOT.md](docs/SALVERIS_COPILOT.md) for the Salveris contract and environment variables.
 
 ---
 
@@ -1098,6 +1118,8 @@ This enables engineers to perform complete investigations without manually corre
 # 📚 Enterprise Knowledge Assistance
 
 The Copilot augments live operational intelligence with enterprise knowledge to provide contextual guidance during investigations.
+
+Dashboard Copilot knowledge is served by **Salveris** (search and grounded answer). The UI never holds Salveris credentials.
 
 Knowledge sources include:
 
@@ -1169,11 +1191,13 @@ This enables responses that are grounded in operational evidence rather than gen
 
 | Component | Technology |
 |-----------|------------|
+| Dashboard Copilot | React panel → SentryyIQ FastAPI |
+| Knowledge platform | Salveris (`/v1/knowledge/search`, `/v1/knowledge/answer`) |
 | Workflow Automation | n8n |
-| Large Language Model | Google Gemini |
+| Large Language Model | Google Gemini (Telegram Copilot) |
 | Backend Services | FastAPI |
 | Operational Data | PostgreSQL |
-| Knowledge Sources | Google Docs |
+| Knowledge Sources | Salveris; Google Docs (n8n) |
 | Communication | Telegram Bot |
 | APIs | REST APIs |
 
@@ -1185,14 +1209,14 @@ The AI Operations Copilot has been designed to evolve into a broader Enterprise 
 
 Planned capabilities include:
 
-- Retrieval-Augmented Generation (RAG)
-- Enterprise Knowledge Intelligence integration
+- Retrieval-Augmented Generation (RAG) beyond Salveris knowledge APIs
 - Hybrid semantic search
 - LangGraph multi-agent workflows
 - Context-aware reasoning
 - Predictive operational recommendations
 - Cross-system incident correlation
 - Enterprise collaboration platform integration
+- Map dashboard Copilot acting principal from SentryyIQ user identity (today: config-seeded Alice)
 
 # 🧠 Intelligence Engine
 
@@ -1601,13 +1625,19 @@ Typical configuration includes:
 
 - Database connection
 - Kafka broker
-- API configuration
+- API configuration (`VITE_API_BASE_URL`)
+- Salveris knowledge platform (server-side only — never prefix with `VITE_`):
+  - `SALVERIS_BASE_URL` (must not share SentryyIQ port 8000; e.g. `http://localhost:8001`)
+  - `SALVERIS_CALLING_PLATFORM_ID`
+  - `SALVERIS_SERVICE_PRINCIPAL_ID`
+  - `SALVERIS_CLIENT_SECRET`
+  - `SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID`
 - Gemini API Key
 - Telegram Bot Token
 - Google API credentials
 - Email configuration
 
-Refer to the project documentation for the complete configuration guide.
+Copy from [`.env.example`](.env.example). Salveris Copilot details: [docs/SALVERIS_COPILOT.md](docs/SALVERIS_COPILOT.md).
 
 ---
 
@@ -1659,7 +1689,8 @@ SentryyIQ exposes REST APIs used by the dashboard and AI Operations Copilot.
 
 ### AI Operations
 
-- Copilot Queries
+- `POST /copilot/ask` — grounded answer + sources (Salveris `/v1/knowledge/answer`)
+- `POST /copilot/search` — matching passages only (Salveris `/v1/knowledge/search`)
 - Investigation APIs
 - Knowledge Retrieval
 
@@ -1676,6 +1707,7 @@ Documentation includes:
 - End-to-End Workflow
 - Dashboard Walkthrough
 - AI Operations Copilot
+- [Salveris Copilot integration](docs/SALVERIS_COPILOT.md)
 - API Documentation
 - Deployment Guide
 
@@ -1713,9 +1745,11 @@ The project portfolio contains complete demonstrations of the implemented platfo
 
 ### Part 3 — AI Operations Copilot
 
+- In-dashboard Copilot: Answer (grounded reply + sources)
+- In-dashboard Copilot: Search (passages only)
 - Conversational investigation
 - Root Cause Analysis
-- Knowledge retrieval
+- Knowledge retrieval via Salveris
 - Incident lifecycle
 - Operational assistance
 
@@ -1727,14 +1761,14 @@ The platform is designed to evolve into a broader Enterprise AI Operations ecosy
 
 Planned enhancements include:
 
-- Retrieval-Augmented Generation (RAG)
-- Enterprise Knowledge Intelligence integration
+- Retrieval-Augmented Generation (RAG) beyond Salveris knowledge APIs
 - Hybrid Search
 - LangGraph-based multi-agent workflows
 - Enterprise collaboration integrations
 - Predictive analytics
 - Knowledge Graph support
 - Context-aware operational reasoning
+- Acting-principal mapping from SentryyIQ authentication
 
 ---
 
