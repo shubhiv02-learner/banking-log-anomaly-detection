@@ -1,7 +1,7 @@
 import re
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session, defer
 from fastapi.middleware.cors import CORSMiddleware
 from .notification import notify_n8n
@@ -17,6 +17,10 @@ from .config import (
     N8N_CLOSE_WEBHOOK,
 )
 from .logging_config import get_logger, setup_logging
+from backend.services.incident_actions import (
+    IncidentActionError,
+    apply_dashboard_incident_action,
+)
 
 logger = get_logger(__name__)
 
@@ -55,7 +59,10 @@ def get_db():
         db.close()
 
 db = SessionLocal()
-users = crud.get_users(db)
+try:
+    users = crud.get_users(db)
+finally:
+    db.close()
 
 #Root
 @app.get("/")
@@ -839,6 +846,14 @@ from backend.integrations.salveris.salveris_client import (
     CAPABILITY_KNOWLEDGE_ANSWER,
     CAPABILITY_KNOWLEDGE_SEARCH,
 )
+from backend.services.acting_principal import ActingPrincipalMissing
+from backend.services.auth_service import (
+    AuthConfigError,
+    authenticate,
+    create_access_token,
+    decode_access_token,
+    get_user_by_id,
+)
 from backend.services.copilot_service import copilot_service
 
 
@@ -853,11 +868,91 @@ def _map_salveris_http(exc: SalverisError) -> HTTPException:
     return HTTPException(status_code=status, detail=str(exc))
 
 
+def _auth_user_payload(user: UserMaster) -> schemas.AuthUser:
+    return schemas.AuthUser(
+        user_id=user.user_id,
+        name=user.name,
+        email=user.email,
+        role=user.role,
+    )
+
+
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> UserMaster:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        user_id = decode_access_token(token)
+    except AuthConfigError:
+        raise HTTPException(status_code=503, detail="Authentication is not configured") from None
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from None
+    user = get_user_by_id(db, user_id)
+    if user is None or not user.active:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user
+
+
+@app.get("/users", response_model=list[schemas.DashboardUser])
+def list_dashboard_users(
+    current_user: UserMaster = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    logger.info("Dashboard users listed (user_id=%s)", current_user.user_id)
+    return crud.get_users(db=db)
+
+
+@app.post(
+    "/tickets/assign",
+    response_model=schemas.DashboardIncidentActionResponse,
+)
+def dashboard_incident_action(
+    body: schemas.DashboardIncidentActionRequest,
+    current_user: UserMaster = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return apply_dashboard_incident_action(db, body, current_user)
+    except IncidentActionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+@app.post("/auth/login", response_model=schemas.LoginResponse)
+def auth_login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
+    try:
+        user = authenticate(db, body.email, body.password)
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        token = create_access_token(user)
+    except AuthConfigError:
+        logger.error("Login failed because JWT_SECRET is not configured")
+        raise HTTPException(status_code=503, detail="Authentication is not configured") from None
+    return schemas.LoginResponse(
+        access_token=token,
+        token_type="bearer",
+        user=_auth_user_payload(user),
+    )
+
+
+@app.get("/auth/me", response_model=schemas.AuthUser)
+def auth_me(current_user: UserMaster = Depends(get_current_user)):
+    return _auth_user_payload(current_user)
+
+
 @app.post("/copilot/search", response_model=CopilotSearchResponse)
-def copilot_search(request: CopilotSearchRequest):
+def copilot_search(
+    request: CopilotSearchRequest,
+    current_user: UserMaster = Depends(get_current_user),
+):
     logger.info(
-        "Copilot search started (capability='%s')",
+        "Copilot search started (capability='%s', user_id=%s)",
         CAPABILITY_KNOWLEDGE_SEARCH,
+        current_user.user_id,
     )
     logger.debug(
         "Copilot search request (question_len=%d, has_context=%s)",
@@ -865,19 +960,29 @@ def copilot_search(request: CopilotSearchRequest):
         request.context is not None,
     )
     try:
-        result = copilot_service.search(request.question, context=request.context)
+        result = copilot_service.search(
+            request.question,
+            context=request.context,
+            user=current_user,
+        )
         logger.info("Copilot search completed (%d hit(s))", len(result.hits))
         return result
+    except ActingPrincipalMissing as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except SalverisError as exc:
         logger.error("Copilot search failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
 
 
 @app.post("/copilot/ask", response_model=CopilotAskResponse)
-def copilot_ask(request: CopilotAskRequest):
+def copilot_ask(
+    request: CopilotAskRequest,
+    current_user: UserMaster = Depends(get_current_user),
+):
     logger.info(
-        "Copilot ask started (capability='%s')",
+        "Copilot ask started (capability='%s', user_id=%s)",
         CAPABILITY_KNOWLEDGE_ANSWER,
+        current_user.user_id,
     )
     logger.debug(
         "Copilot ask request (question_len=%d, has_context=%s)",
@@ -885,12 +990,18 @@ def copilot_ask(request: CopilotAskRequest):
         request.context is not None,
     )
     try:
-        result = copilot_service.ask(request.question, context=request.context)
+        result = copilot_service.ask(
+            request.question,
+            context=request.context,
+            user=current_user,
+        )
         logger.info(
             "Copilot ask completed (%d source(s))",
             len(result.sources),
         )
         return result
+    except ActingPrincipalMissing as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except SalverisError as exc:
         logger.error("Copilot ask failed", exc_info=True)
         raise _map_salveris_http(exc) from exc

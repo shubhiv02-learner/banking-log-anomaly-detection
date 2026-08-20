@@ -37,7 +37,7 @@ class SalverisSettings:
     calling_platform_id: str
     service_principal_id: str
     client_secret: str
-    default_acting_principal_id: str
+    default_acting_principal_id: str = ""
     timeout_seconds: float = 30.0
 
 
@@ -55,7 +55,6 @@ def get_salveris_settings() -> SalverisSettings:
             ("SALVERIS_CALLING_PLATFORM_ID", calling_platform_id),
             ("SALVERIS_SERVICE_PRINCIPAL_ID", service_principal_id),
             ("SALVERIS_CLIENT_SECRET", client_secret),
-            ("SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID", default_acting_principal_id),
         )
         if not value
     ]

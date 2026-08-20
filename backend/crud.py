@@ -313,7 +313,8 @@ def assign_incident(
     assigned_to,
     remarks,
     prevt_remarks,
-    action: schemas.IncidentAction = schemas.IncidentAction.ASSIGNED
+    action: schemas.IncidentAction = schemas.IncidentAction.ASSIGNED,
+    assigned_by: str = "OPS MANAGER",
 ):
     
     prev_assignee = incident.assignee
@@ -322,7 +323,7 @@ def assign_incident(
         ticket_id=incident.ticket_id,
         previous_assignee=prev_assignee,
         assigned_to=(assigned_to or "").upper(),
-        assigned_by="OPS MANAGER",
+        assigned_by=(assigned_by or "OPS MANAGER").strip() or "OPS MANAGER",
         action=action,
         remarks=remarks
     )

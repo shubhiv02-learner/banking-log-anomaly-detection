@@ -10,14 +10,24 @@ SentryyIQ never exposes Salveris to the browser. The Copilot UI calls SentryyIQ 
 | `SALVERIS_CALLING_PLATFORM_ID` | SentryyIQ platform UUID |
 | `SALVERIS_SERVICE_PRINCIPAL_ID` | Calling **service** principal |
 | `SALVERIS_CLIENT_SECRET` | Service secret |
-| `SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID` | Temporary **acting** principal (Alice) |
+| `SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID` | Alice's Salveris acting principal (seed script) |
+| `SALVERIS_BOB_ACTING_PRINCIPAL_ID` | Bob's Salveris acting principal (seed script) |
+| `JWT_SECRET` | Signs SentryyIQ login tokens |
 
 Copy from [`.env.example`](../.env.example) into your local `.env`.
 
+There is no signup. Seed Alice and Bob (mapped to those Salveris IDs):
+
+```text
+python -m backend.scripts.set_user_credentials --seed-alice-bob
+```
+
+Local-dev defaults: `alice@sentineliq.demo` / `Alice123!` and `bob@sentineliq.demo` / `Bob123!`.
+
 ## Flow
 
-1. UI → `POST /copilot/ask` (Answer: grounded reply + sources) or `POST /copilot/search` (Search: passages only, no answer)
-2. `CopilotService` → `resolve_acting_principal()` (config today)
+1. UI signs in (`POST /auth/login`) then calls `POST /copilot/ask` or `POST /copilot/search` with `Authorization: Bearer <jwt>`
+2. `CopilotService` → `resolve_acting_principal(user)` from `user_master.external_reference`
 3. `SalverisClient.search/answer(..., acting_principal_id=...)`
 
 Salveris inbound contract:

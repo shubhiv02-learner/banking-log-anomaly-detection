@@ -1216,7 +1216,7 @@ Planned capabilities include:
 - Predictive operational recommendations
 - Cross-system incident correlation
 - Enterprise collaboration platform integration
-- Map dashboard Copilot acting principal from SentryyIQ user identity (today: config-seeded Alice)
+- Map dashboard Copilot acting principal from the signed-in SentryyIQ user's `user_master.external_reference`
 
 # 🧠 Intelligence Engine
 
@@ -1631,7 +1631,9 @@ Typical configuration includes:
   - `SALVERIS_CALLING_PLATFORM_ID`
   - `SALVERIS_SERVICE_PRINCIPAL_ID`
   - `SALVERIS_CLIENT_SECRET`
-  - `SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID`
+  - `SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID` (Alice seed)
+  - `SALVERIS_BOB_ACTING_PRINCIPAL_ID` (Bob seed)
+  - `JWT_SECRET` (SentryyIQ login)
 - Gemini API Key
 - Telegram Bot Token
 - Google API credentials

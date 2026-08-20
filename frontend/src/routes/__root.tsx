@@ -4,15 +4,20 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider, THEME_BOOT_SCRIPT } from "../components/theme/theme-provider";
 import { AppShell } from "../components/layout/app-shell";
+import { AuthProvider } from "../lib/auth";
+import { getAccessToken } from "../lib/auth-storage";
+import { Toaster } from "../components/ui/sonner";
 
 
 function NotFoundComponent() {
@@ -120,15 +125,41 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token && pathname !== "/login") {
+      void navigate({ to: "/login" });
+      return;
+    }
+    if (token && pathname === "/login") {
+      void navigate({ to: "/" });
+      return;
+    }
+    setReady(true);
+  }, [pathname, navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
+        <AuthProvider>
+          {!ready ? (
+            <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+              Loading…
+            </div>
+          ) : pathname === "/login" ? (
+            <Outlet />
+          ) : (
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          )}
+          <Toaster />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
-
 }

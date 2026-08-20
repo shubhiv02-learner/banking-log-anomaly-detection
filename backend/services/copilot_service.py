@@ -16,6 +16,7 @@ from backend.integrations.salveris.salveris_client import (
     SalverisClient,
 )
 from backend.integrations.salveris.settings import get_salveris_settings
+from backend.db_models import UserMaster
 from backend.logging_config import get_logger
 from backend.services.acting_principal import resolve_acting_principal
 
@@ -49,11 +50,15 @@ class CopilotService:
         self,
         question: str,
         context: Optional[CopilotContext] = None,
+        *,
+        user: UserMaster,
     ) -> CopilotSearchResponse:
-        acting_id = resolve_acting_principal()
+        acting_id = resolve_acting_principal(user)
         _logger.info(
-            "Copilot search started (capability='%s', acting_principal_id='%s')",
+            "Copilot search started (capability='%s', user_id=%s, "
+            "acting_principal_id='%s')",
             CAPABILITY_KNOWLEDGE_SEARCH,
+            user.user_id,
             acting_id,
         )
         _logger.debug(
@@ -73,11 +78,15 @@ class CopilotService:
         self,
         question: str,
         context: Optional[CopilotContext] = None,
+        *,
+        user: UserMaster,
     ) -> CopilotAskResponse:
-        acting_id = resolve_acting_principal()
+        acting_id = resolve_acting_principal(user)
         _logger.info(
-            "Copilot ask started (capability='%s', acting_principal_id='%s')",
+            "Copilot ask started (capability='%s', user_id=%s, "
+            "acting_principal_id='%s')",
             CAPABILITY_KNOWLEDGE_ANSWER,
+            user.user_id,
             acting_id,
         )
         _logger.debug(

@@ -116,7 +116,7 @@ class UserMaster(Base):
 
     name = Column(String(100), nullable=False)
 
-    email = Column(String(150), nullable=False)
+    email = Column(String(150), nullable=False, index=True)
 
     role = Column(String(50))
 
@@ -125,6 +125,11 @@ class UserMaster(Base):
         default=True,
         nullable=False
     )
+
+    # Salveris acting principal (X-Salveris-Acting-Principal-Id)
+    external_reference = Column(String(64), nullable=True)
+
+    password_hash = Column(String(255), nullable=True)
 
     
 class IncidentAssignmentHistory(Base):

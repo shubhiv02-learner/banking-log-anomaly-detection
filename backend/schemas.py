@@ -174,6 +174,30 @@ class UserMasterResponse(BaseModel):
         from_attributes = True
 
 
+class AuthUser(BaseModel):
+
+    user_id: int
+    name: str
+    email: str
+    role: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+
+    access_token: str
+    token_type: str = "bearer"
+    user: AuthUser
+
+
 class IncidentAssignmentHistoryResponse(BaseModel):
 
     assignment_id: int
@@ -206,3 +230,56 @@ class IncidentAssignmentRequest(BaseModel):
     remarks: str | None = None
     action: IncidentAction = IncidentAction.ASSIGNED
     prevt_remarks: str | None = None
+
+
+class DashboardUser(BaseModel):
+
+    user_id: int
+    name: str
+    email: str
+    role: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class DashboardIncidentActionRequest(BaseModel):
+
+    ticket_id: str
+    action: IncidentAction
+    assigned_to: str | None = None
+    remarks: str | None = None
+    closure_remark: str | None = None
+    preventive_action: str | None = None
+
+    @field_validator("ticket_id")
+    @classmethod
+    def ticket_id_required(cls, value: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("ticket_id is required")
+        return text
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def action_required(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
+    @field_validator("assigned_to")
+    @classmethod
+    def assigned_to_strip(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
+
+
+class DashboardIncidentActionResponse(BaseModel):
+
+    action: IncidentAction
+    message: str
+    ticket_id: str
+    status: str
+    assignee: str | None = None

@@ -24,8 +24,11 @@ import {
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
-import { api } from "@/lib/api/client";
+import { IncidentActionDialog } from "@/components/dashboard/incident-action-dialog";
+import { Button } from "@/components/ui/button";
+import { api, type DashboardUser, type IncidentAction } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
+import { useAuth } from "@/lib/auth";
 
 import type { Ticket, AlertStatus, Priority } from "@/lib/api/types";
 
@@ -43,19 +46,43 @@ export const Route = createFileRoute("/incidents")({
 });
 
 const PRIORITIES: Priority[] = ["Critical", "High", "Medium"];
-const STATUSES: AlertStatus[] = ["OPEN", "ASSIGNED", "RESOLVED"];
+const STATUSES: AlertStatus[] = ["OPEN", "ASSIGNED", "RESOLVED", "CLOSED"];
 /** Visible page length for the details table; header counts still use full fetch. */
 const TABLE_PAGE_SIZE = 15;
 
+function nextAction(status: AlertStatus): IncidentAction | null {
+  if (status === "OPEN") return "ASSIGNED";
+  if (status === "ASSIGNED") return "RESOLVED";
+  if (status === "RESOLVED") return "CLOSED";
+  return null;
+}
+
+function actionLabel(action: IncidentAction): string {
+  if (action === "ASSIGNED") return "Assign";
+  if (action === "RESOLVED") return "Resolve";
+  return "Close";
+}
+
 function IncidentsPage() {
+  const { user } = useAuth();
   const [all, setAll] = useState<Ticket[]>([]);
+  const [users, setUsers] = useState<DashboardUser[]>([]);
   const [priority, setPriority] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const [actionTicket, setActionTicket] = useState<Ticket | null>(null);
+  const [pendingAction, setPendingAction] = useState<IncidentAction | null>(null);
+
+  function loadIncidents() {
+    api.listTickets()
+      .then((data) => setAll(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Failed to fetch incidents:", err));
+  }
 
   useEffect(() => {
-    api.listTickets()
-      .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
-      .catch((err) => console.error("Failed to fetch incidents:", err));
+    loadIncidents();
+    api.listUsers()
+      .then((data) => setUsers(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Failed to fetch users:", err));
   }, []);
 
   const filtered = useMemo(() => {
@@ -72,17 +99,14 @@ function IncidentsPage() {
   );
 
   const counts = [
+    { p: "Open", n: all.filter((a) => a.status === "OPEN").length },
     {
-      p: "Critical Incidents",
-      n: all.filter((a) => a.priority === "Critical" && a.status === "OPEN").length,
-    },
-    {
-      p: "ASSIGNED",
+      p: "Assigned",
       n: all.filter((a) => a.status === "ASSIGNED").length,
       statusPill: "ASSIGNED" as AlertStatus,
     },
     { p: "Resolved", n: all.filter((a) => a.status === "RESOLVED").length },
-    { p: "Total Open", n: all.filter((a) => a.status === "OPEN").length },
+    { p: "Closed", n: all.filter((a) => a.status === "CLOSED").length },
   ];
 
   return (
@@ -98,12 +122,12 @@ function IncidentsPage() {
                 <span className="font-mono text-2xl font-semibold">{n}</span>
                 {statusPill ? (
                   <StatusPill status={statusPill} />
-                ) : p === "Total Open" ? (
+                ) : p === "Open" ? (
                   <StatusPill status="OPEN" />
                 ) : p === "Resolved" ? (
                   <StatusPill status="RESOLVED" />
                 ) : (
-                  <PriorityBadge priority="Critical" />
+                  <StatusPill status="CLOSED" />
                 )}
               </div>
             </CardContent>
@@ -160,11 +184,13 @@ function IncidentsPage() {
                 <TableHead className="w-[10%]">Priority</TableHead>
                 <TableHead className="w-[12%]">Status</TableHead>
                 <TableHead className="w-[15%] text-right">Assigned On</TableHead>
-                <TableHead className="w-[10%] text-center align-middle">Actions</TableHead>
+                <TableHead className="w-[16%] text-center align-middle">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visible.map((a) => (
+              {visible.map((a) => {
+                const action = nextAction(a.status);
+                return (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">#{a.id}</TableCell>
                   <TableCell className="font-mono text-xs">{a.alert_id}</TableCell>
@@ -187,13 +213,27 @@ function IncidentsPage() {
                       addSuffix: true,
                     })}
                   </TableCell>
-                  <TableCell className="w-[10%] text-center align-middle">
-                    <div className="flex items-center justify-center">
+                  <TableCell className="w-[16%] text-center align-middle">
+                    <div className="flex items-center justify-center gap-1">
                       <IncidentDetailsDialog item={a} />
+                      {action ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setActionTicket(a);
+                            setPendingAction(action);
+                          }}
+                        >
+                          {actionLabel(action)}
+                        </Button>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell
@@ -216,6 +256,18 @@ function IncidentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <IncidentActionDialog
+        ticket={actionTicket}
+        action={pendingAction}
+        users={users}
+        currentUserName={user?.name ?? ""}
+        onClose={() => {
+          setActionTicket(null);
+          setPendingAction(null);
+        }}
+        onSuccess={loadIncidents}
+      />
     </div>
   );
 }

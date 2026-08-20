@@ -1,4 +1,5 @@
 import type { Alert, WindowMetric, Ticket, WindowMetricFull } from "./types";
+import { clearSession, getAccessToken } from "@/lib/auth-storage";
 
 const BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").trim();
 
@@ -10,11 +11,30 @@ function joinApiUrl(base: string, path: string): string {
   return `${normalizedBase}/${normalizedPath}`;
 }
 
+function authHeaders(extra?: HeadersInit): Headers {
+  const headers = new Headers(extra);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return headers;
+}
+
+function redirectToLoginIfUnauthorized(status: number, path: string): void {
+  if (status !== 401) return;
+  if (path === "/auth/login") return;
+  clearSession();
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
 async function http<T>(path: string): Promise<T> {
   const res = await fetch(joinApiUrl(BASE_URL, path), {
-    headers: { Accept: "application/json" },
+    headers: authHeaders(),
   });
   if (!res.ok) {
+    redirectToLoginIfUnauthorized(res.status, path);
     throw new Error(`API ${res.status} ${res.statusText} — ${path}`);
   }
   return res.json() as Promise<T>;
@@ -23,21 +43,31 @@ async function http<T>(path: string): Promise<T> {
 async function httpPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(joinApiUrl(BASE_URL, path), {
     method: "POST",
-    headers: {
-      Accept: "application/json",
+    headers: authHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    redirectToLoginIfUnauthorized(res.status, path);
     let detail = `${res.status} ${res.statusText}`;
     try {
-      const errBody = (await res.json()) as { detail?: string };
-      if (errBody?.detail) detail = String(errBody.detail);
+      const errBody = (await res.json()) as {
+        detail?: string | { msg?: string }[];
+      };
+      if (typeof errBody?.detail === "string") {
+        detail = errBody.detail;
+      } else if (Array.isArray(errBody?.detail) && errBody.detail[0]?.msg) {
+        detail = errBody.detail.map((item) => item.msg).filter(Boolean).join(" ");
+      }
     } catch {
       /* ignore */
     }
-    throw new Error(`API ${detail} — ${path}`);
+    throw new Error(
+      path === "/auth/login" || path === "/tickets/assign"
+        ? detail
+        : `API ${detail} — ${path}`,
+    );
   }
   return res.json() as Promise<T>;
 }
@@ -89,8 +119,50 @@ export interface CopilotAskResponse {
   sources: SourceRef[];
 }
 
+export interface AuthUser {
+  user_id: number;
+  name: string;
+  email: string;
+  role: string | null;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
+}
+
+export interface DashboardUser {
+  user_id: number;
+  name: string;
+  email: string;
+  role: string | null;
+}
+
+export type IncidentAction = "ASSIGNED" | "RESOLVED" | "CLOSED";
+
+export interface IncidentActionRequest {
+  ticket_id: string;
+  action: IncidentAction;
+  assigned_to?: string;
+  remarks?: string;
+  closure_remark?: string;
+  preventive_action?: string;
+}
+
+export interface IncidentActionResponse {
+  action: IncidentAction;
+  message: string;
+  ticket_id: string;
+  status: string;
+  assignee: string | null;
+}
+
 export const api = {
   health: () => http<{ status: string }>("/health"),
+  login: (email: string, password: string) =>
+    httpPost<LoginResponse>("/auth/login", { email, password }),
+  me: () => http<AuthUser>("/auth/me"),
   dashboardSummary: () => http<DashboardSummary>("/dashboard/summary"),
   listAlerts: () => http<Alert[]>("/alerts"),
   recentAlerts: () => http<Alert[]>("/alerts/recent"),
@@ -109,6 +181,9 @@ export const api = {
     httpPost<CopilotSearchResponse>("/copilot/search", { question, context }),
   copilotAsk: (question: string, context?: CopilotContext) =>
     httpPost<CopilotAskResponse>("/copilot/ask", { question, context }),
+  listUsers: () => http<DashboardUser[]>("/users"),
+  updateIncident: (body: IncidentActionRequest) =>
+    httpPost<IncidentActionResponse>("/tickets/assign", body),
 };
 
 export function serviceLabel(service: string): string {
