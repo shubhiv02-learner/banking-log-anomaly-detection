@@ -1,0 +1,30 @@
+---
+description: Use the existing backend logger on all new functionality. Never log secrets. Follow Salveris Info/Debug/Error levels.
+globs: backend/**/*.py
+alwaysApply: true
+---
+
+# Backend logging
+
+Use the shared logger for every new backend feature. Do not add `print()` or a second logging setup.
+
+Salveris integration modules use `_logger = get_logger(__name__)`. Existing FastAPI modules may keep `logger`.
+
+```python
+from backend.logging_config import get_logger
+
+_logger = get_logger(__name__)
+_logger.info("Copilot search started (capability='%s')", capability)
+```
+
+| Level | When |
+|-------|------|
+| **INFO** | Lifecycle and significant start/complete (IDs, capability, counts). |
+| **DEBUG** | Request shape, config comparison, match flags. Not method entry/exit. |
+| **ERROR** | Failure before raise. Use `exc_info=True` when logging an exception. |
+
+- Call `setup_logging()` only in process entrypoints (`backend/main.py` lifespan).
+- Never log secrets, tokens, passwords, or `Authorization` values. For Salveris log IDs only plus `client_secret_configured=true|false`.
+- Do not log full user questions. Use `question_len`.
+- Do not log inside exception class definitions (`exceptions.py`).
+- Avoid duplicating the same failure at every layer; log once at the handling boundary.

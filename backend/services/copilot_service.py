@@ -10,12 +10,16 @@ from backend.integrations.salveris.models import (
     CopilotContext,
     CopilotSearchResponse,
 )
-from backend.integrations.salveris.salveris_client import SalverisClient
+from backend.integrations.salveris.salveris_client import (
+    CAPABILITY_KNOWLEDGE_ANSWER,
+    CAPABILITY_KNOWLEDGE_SEARCH,
+    SalverisClient,
+)
 from backend.integrations.salveris.settings import get_salveris_settings
 from backend.logging_config import get_logger
 from backend.services.acting_principal import resolve_acting_principal
 
-logger = get_logger(__name__)
+_logger = get_logger(__name__)
 
 
 class CopilotService:
@@ -28,8 +32,18 @@ class CopilotService:
         try:
             settings = get_salveris_settings()
         except ValueError as exc:
+            message = "Salveris client could not be created."
+            _logger.error(message, exc_info=True)
             raise SalverisConfigError(str(exc)) from exc
-        return SalverisClient(settings)
+        _logger.info(
+            "Salveris client initialized (base_url='%s', calling_platform_id='%s', "
+            "service_principal_id='%s')",
+            settings.base_url,
+            settings.calling_platform_id,
+            settings.service_principal_id,
+        )
+        self._client = SalverisClient(settings)
+        return self._client
 
     def search(
         self,
@@ -37,16 +51,23 @@ class CopilotService:
         context: Optional[CopilotContext] = None,
     ) -> CopilotSearchResponse:
         acting_id = resolve_acting_principal()
-        logger.info(
-            "Copilot search question_len=%s acting_principal=%s…",
-            len(question),
-            acting_id[:8],
+        _logger.info(
+            "Copilot search started (capability='%s', acting_principal_id='%s')",
+            CAPABILITY_KNOWLEDGE_SEARCH,
+            acting_id,
         )
-        return self._get_client().search(
+        _logger.debug(
+            "Copilot search request (question_len=%d, has_context=%s)",
+            len(question),
+            context is not None,
+        )
+        result = self._get_client().search(
             question,
             acting_principal_id=acting_id,
             context=context,
         )
+        _logger.info("Copilot search completed (%d hit(s))", len(result.hits))
+        return result
 
     def ask(
         self,
@@ -54,16 +75,26 @@ class CopilotService:
         context: Optional[CopilotContext] = None,
     ) -> CopilotAskResponse:
         acting_id = resolve_acting_principal()
-        logger.info(
-            "Copilot ask question_len=%s acting_principal=%s…",
-            len(question),
-            acting_id[:8],
+        _logger.info(
+            "Copilot ask started (capability='%s', acting_principal_id='%s')",
+            CAPABILITY_KNOWLEDGE_ANSWER,
+            acting_id,
         )
-        return self._get_client().answer(
+        _logger.debug(
+            "Copilot ask request (question_len=%d, has_context=%s)",
+            len(question),
+            context is not None,
+        )
+        result = self._get_client().answer(
             question,
             acting_principal_id=acting_id,
             context=context,
         )
+        _logger.info(
+            "Copilot ask completed (%d source(s))",
+            len(result.sources),
+        )
+        return result
 
 
 copilot_service = CopilotService()

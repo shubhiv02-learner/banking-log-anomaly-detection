@@ -835,6 +835,10 @@ from backend.integrations.salveris.models import (
     CopilotSearchRequest,
     CopilotSearchResponse,
 )
+from backend.integrations.salveris.salveris_client import (
+    CAPABILITY_KNOWLEDGE_ANSWER,
+    CAPABILITY_KNOWLEDGE_SEARCH,
+)
 from backend.services.copilot_service import copilot_service
 
 
@@ -851,19 +855,44 @@ def _map_salveris_http(exc: SalverisError) -> HTTPException:
 
 @app.post("/copilot/search", response_model=CopilotSearchResponse)
 def copilot_search(request: CopilotSearchRequest):
+    logger.info(
+        "Copilot search started (capability='%s')",
+        CAPABILITY_KNOWLEDGE_SEARCH,
+    )
+    logger.debug(
+        "Copilot search request (question_len=%d, has_context=%s)",
+        len(request.question),
+        request.context is not None,
+    )
     try:
-        return copilot_service.search(request.question, context=request.context)
+        result = copilot_service.search(request.question, context=request.context)
+        logger.info("Copilot search completed (%d hit(s))", len(result.hits))
+        return result
     except SalverisError as exc:
-        logger.error("Copilot search failed: %s", exc)
+        logger.error("Copilot search failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
 
 
 @app.post("/copilot/ask", response_model=CopilotAskResponse)
 def copilot_ask(request: CopilotAskRequest):
+    logger.info(
+        "Copilot ask started (capability='%s')",
+        CAPABILITY_KNOWLEDGE_ANSWER,
+    )
+    logger.debug(
+        "Copilot ask request (question_len=%d, has_context=%s)",
+        len(request.question),
+        request.context is not None,
+    )
     try:
-        return copilot_service.ask(request.question, context=request.context)
+        result = copilot_service.ask(request.question, context=request.context)
+        logger.info(
+            "Copilot ask completed (%d source(s))",
+            len(result.sources),
+        )
+        return result
     except SalverisError as exc:
-        logger.error("Copilot ask failed: %s", exc)
+        logger.error("Copilot ask failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
 
 

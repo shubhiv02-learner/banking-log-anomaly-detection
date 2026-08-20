@@ -32,7 +32,10 @@ from backend.integrations.salveris.models import (
 from backend.integrations.salveris.settings import SalverisSettings
 from backend.logging_config import get_logger
 
-logger = get_logger(__name__)
+_logger = get_logger(__name__)
+
+CAPABILITY_KNOWLEDGE_SEARCH = "KNOWLEDGE_SEARCH"
+CAPABILITY_KNOWLEDGE_ANSWER = "KNOWLEDGE_ANSWER"
 
 
 class SalverisClient:
@@ -53,6 +56,46 @@ class SalverisClient:
         # KnowledgeSearch/AnswerRequestModel: extra="forbid" — query only.
         return {"query": query}
 
+    def _log_outbound_identity(
+        self,
+        *,
+        capability: str,
+        path: str,
+        headers: dict[str, str],
+        query_len: int,
+    ) -> None:
+        """Log outbound IDs at INFO; compare with seed/config at DEBUG. Never log the secret."""
+        sent_platform = headers.get("X-Salveris-Calling-Platform-Id", "")
+        sent_service = headers.get("X-Salveris-Service-Principal-Id", "")
+        sent_acting = headers.get("X-Salveris-Acting-Principal-Id", "")
+        _logger.info(
+            "Salveris outbound call started (capability='%s', "
+            "calling_platform_id='%s', service_principal_id='%s', "
+            "acting_principal_id='%s')",
+            capability,
+            sent_platform,
+            sent_service,
+            sent_acting,
+        )
+        _logger.debug(
+            "Salveris outbound identity compared with config (path='%s', "
+            "query_len=%d, config_calling_platform_id='%s', "
+            "config_service_principal_id='%s', "
+            "config_default_acting_principal_id='%s', platform_id_match=%s, "
+            "service_principal_id_match=%s, acting_principal_id_match=%s, "
+            "client_secret_configured=%s, authorization_header_set=%s)",
+            path,
+            query_len,
+            self._settings.calling_platform_id,
+            self._settings.service_principal_id,
+            self._settings.default_acting_principal_id,
+            sent_platform == self._settings.calling_platform_id,
+            sent_service == self._settings.service_principal_id,
+            sent_acting == self._settings.default_acting_principal_id,
+            bool(self._settings.client_secret),
+            bool(headers.get("Authorization")),
+        )
+
     def _request(
         self,
         method: str,
@@ -60,28 +103,52 @@ class SalverisClient:
         *,
         acting_principal_id: str,
         json_body: dict[str, Any],
+        capability: str,
     ) -> Any:
         url = f"{self._settings.base_url}{path}"
+        headers = self._service_headers(acting_principal_id)
+        query = json_body.get("query")
+        query_len = len(query) if isinstance(query, str) else 0
+        self._log_outbound_identity(
+            capability=capability,
+            path=path,
+            headers=headers,
+            query_len=query_len,
+        )
         try:
             with httpx.Client(timeout=self._settings.timeout_seconds) as client:
                 response = client.request(
                     method,
                     url,
-                    headers=self._service_headers(acting_principal_id),
+                    headers=headers,
                     json=json_body,
                 )
         except httpx.TimeoutException as exc:
-            logger.error("Salveris timeout path=%s", path)
-            raise SalverisUnavailable(f"Salveris timed out calling {path}") from exc
+            message = (
+                f"Salveris timed out calling {path} (capability='{capability}', "
+                f"acting_principal_id='{acting_principal_id}')."
+            )
+            _logger.error(message, exc_info=True)
+            raise SalverisUnavailable(message) from exc
         except httpx.RequestError as exc:
-            logger.error("Salveris unreachable path=%s error=%s", path, exc)
-            raise SalverisUnavailable(f"Salveris unreachable: {exc}") from exc
+            message = (
+                f"Salveris unreachable calling {path} (capability='{capability}', "
+                f"acting_principal_id='{acting_principal_id}')."
+            )
+            _logger.error(message, exc_info=True)
+            raise SalverisUnavailable(message) from exc
 
         if response.status_code in (401, 403):
-            logger.error(
-                "Salveris auth failed path=%s status=%s",
+            _logger.error(
+                "Salveris authentication failed (capability='%s', path='%s', "
+                "status=%d, calling_platform_id='%s', service_principal_id='%s', "
+                "acting_principal_id='%s')",
+                capability,
                 path,
                 response.status_code,
+                self._settings.calling_platform_id,
+                self._settings.service_principal_id,
+                acting_principal_id,
             )
             raise SalverisAuthError(
                 f"Salveris auth failed ({response.status_code})",
@@ -89,8 +156,9 @@ class SalverisClient:
             )
 
         if response.status_code >= 500:
-            logger.error(
-                "Salveris server error path=%s status=%s",
+            _logger.error(
+                "Salveris server error (capability='%s', path='%s', status=%d)",
+                capability,
                 path,
                 response.status_code,
             )
@@ -101,8 +169,10 @@ class SalverisClient:
 
         if response.status_code >= 400:
             detail = response.text[:500]
-            logger.error(
-                "Salveris client error path=%s status=%s body=%s",
+            _logger.error(
+                "Salveris request failed (capability='%s', path='%s', "
+                "status=%d, body='%s')",
+                capability,
                 path,
                 response.status_code,
                 detail,
@@ -112,6 +182,12 @@ class SalverisClient:
                 status_code=response.status_code,
             )
 
+        _logger.debug(
+            "Salveris response received (capability='%s', path='%s', status=%d)",
+            capability,
+            path,
+            response.status_code,
+        )
         if not response.content:
             return {}
         return response.json()
@@ -124,7 +200,9 @@ class SalverisClient:
         context: Optional[CopilotContext] = None,
     ) -> CopilotSearchResponse:
         if not acting_principal_id:
-            raise SalverisError("acting_principal_id is required")
+            message = "acting_principal_id is required."
+            _logger.error(message)
+            raise SalverisError(message)
         _ = context  # Salveris body forbids extra fields; context stays SentryyIQ-only.
 
         raw = self._request(
@@ -132,8 +210,14 @@ class SalverisClient:
             "/v1/knowledge/search",
             acting_principal_id=acting_principal_id,
             json_body=self._build_body(query),
+            capability=CAPABILITY_KNOWLEDGE_SEARCH,
         )
-        return self._normalize_search(raw)
+        result = self._normalize_search(raw)
+        _logger.info(
+            "Salveris knowledge search completed (%d hit(s))",
+            len(result.hits),
+        )
+        return result
 
     def answer(
         self,
@@ -143,7 +227,9 @@ class SalverisClient:
         context: Optional[CopilotContext] = None,
     ) -> CopilotAskResponse:
         if not acting_principal_id:
-            raise SalverisError("acting_principal_id is required")
+            message = "acting_principal_id is required."
+            _logger.error(message)
+            raise SalverisError(message)
         _ = context  # Salveris body forbids extra fields; context stays SentryyIQ-only.
 
         raw = self._request(
@@ -151,12 +237,22 @@ class SalverisClient:
             "/v1/knowledge/answer",
             acting_principal_id=acting_principal_id,
             json_body=self._build_body(query),
+            capability=CAPABILITY_KNOWLEDGE_ANSWER,
         )
-        return self._normalize_answer(raw)
+        result = self._normalize_answer(raw)
+        _logger.info(
+            "Salveris knowledge answer completed (%d source(s))",
+            len(result.sources),
+        )
+        return result
 
     @staticmethod
     def _normalize_search(raw: Any) -> CopilotSearchResponse:
         if not isinstance(raw, dict):
+            _logger.debug(
+                "Salveris search response was not a JSON object (type='%s')",
+                type(raw).__name__,
+            )
             return CopilotSearchResponse(hits=[])
 
         items = raw.get("search_results") or raw.get("hits") or raw.get("results") or []
@@ -196,6 +292,10 @@ class SalverisClient:
     @staticmethod
     def _normalize_answer(raw: Any) -> CopilotAskResponse:
         if not isinstance(raw, dict):
+            _logger.debug(
+                "Salveris answer response was not a JSON object (type='%s')",
+                type(raw).__name__,
+            )
             return CopilotAskResponse(answer=str(raw), confidence=None, sources=[])
 
         answer = (
