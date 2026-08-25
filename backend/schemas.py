@@ -110,7 +110,19 @@ class WindowMetricsDetail(BaseModel):
 
     class Config:
         from_attributes = True
-    
+
+
+class WindowMetricsTelemetrySummary(BaseModel):
+    window_metric_id: int
+    window_start: Optional[str] = None
+    window_end: Optional[str] = None
+    payload_summary: Optional[Any] = None
+    sql_rollup: Dict[str, Any]
+    alert_id: Optional[int] = None
+    service: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+
       
 class TicketResponse(BaseModel):
 
@@ -149,6 +161,7 @@ class TicketListResponse(BaseModel):
 #incident_summary : Optional[Union[Dict[str, Any], List[Any]]] = None
 class TicketDetRes(BaseModel):
     ticket_id: str
+    alert_id: int | None = None
     service:str
     priority: str
     status: str
@@ -283,3 +296,23 @@ class DashboardIncidentActionResponse(BaseModel):
     ticket_id: str
     status: str
     assignee: str | None = None
+
+
+class ErrorMappingResponse(BaseModel):
+    """Single row from the operational error_mapping catalog."""
+
+    error_code: str
+    error_name: str
+    description: str | None = None
+    business_impact: str | None = None
+    customer_impact: str | None = None
+    recommended_action: str | None = None
+    severity_default: str | None = None
+    category: str | None = None
+
+
+class ErrorMappingListResponse(BaseModel):
+    """Full error_mapping catalog for Salveris list-all live fetch."""
+
+    total: int
+    errors: list[ErrorMappingResponse]

@@ -45,4 +45,5 @@ class SourceRef(BaseModel):
 class CopilotAskResponse(BaseModel):
     answer: str
     confidence: Optional[str] = None
+    confidence_rationale: Optional[str] = None
     sources: list[SourceRef] = Field(default_factory=list)

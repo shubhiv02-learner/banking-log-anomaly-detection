@@ -116,6 +116,7 @@ class UserMaster(Base):
 
     name = Column(String(100), nullable=False)
 
+    # Notification address for n8n assign webhooks; also used as login id.
     email = Column(String(150), nullable=False, index=True)
 
     role = Column(String(50))

@@ -116,6 +116,7 @@ export interface SourceRef {
 export interface CopilotAskResponse {
   answer: string;
   confidence?: string | null;
+  confidence_rationale?: string | null;
   sources: SourceRef[];
 }
 

@@ -1,13 +1,22 @@
 """Create or update login users in user_master (no signup API).
 
+``user_master.email`` is the **notification address** used by assign/resolve
+webhooks (n8n payload field ``email``). It is also the login identifier.
+Runtime Copilot uses ``external_reference`` for Salveris acting principal and
+``password_hash`` for login. It does not read bootstrap constants from this file.
+
 Examples:
   python -m backend.scripts.set_user_credentials --seed-alice-bob
-  python -m backend.scripts.set_user_credentials --email alice@sentineliq.demo \\
+  python -m backend.scripts.set_user_credentials --email ops@example.com \\
       --name Alice --role ops --password ... --external-reference <uuid>
 
-Default local-dev passwords for --seed-alice-bob (override with env):
-  Alice: alice@sentineliq.demo  (SEED_ALICE_PASSWORD, default Alice123!)
-  Bob:   bob@sentineliq.demo    (SEED_BOB_PASSWORD, default Bob123!)
+``--seed-alice-bob`` inserts Alice, Bob, Rita, and Karan Malhotra only when
+they are missing. Existing rows keep their email. Empty ``password_hash`` and
+``external_reference`` are filled. Karan Malhotra is updated in place when the
+name already exists in ``user_master``.
+Existing rows keep their email, password hash, and Salveris principal.
+Optional env vars apply only when a field is empty on insert or when
+``--reset-passwords`` is set.
 """
 
 from __future__ import annotations
@@ -34,12 +43,45 @@ from backend.services.auth_service import hash_password
 setup_logging()
 _logger = get_logger(__name__)
 
-ALICE_EMAIL = "alice@sentineliq.demo"
-BOB_EMAIL = "bob@sentineliq.demo"
-DEFAULT_ALICE_PASSWORD = "Alice123!"
-DEFAULT_BOB_PASSWORD = "Bob123!"
-DEFAULT_ALICE_PRINCIPAL = "10000000-0000-0000-0000-000000000031"
-DEFAULT_BOB_PRINCIPAL = "10000000-0000-0000-0000-000000000032"
+# First-insert bootstrap only. Never used by the running API.
+_BOOTSTRAP_USERS: tuple[dict[str, str], ...] = (
+    {
+        "name": "Alice",
+        "role": "Ops Engineer",
+        "email": "alice@sentineliq.demo",
+        "password_env": "SEED_ALICE_PASSWORD",
+        "password": "Alice123!",
+        "principal_env": "SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID",
+        "principal": "10000000-0000-0000-0000-000000000031",
+    },
+    {
+        "name": "Bob",
+        "role": "Ops Engineer",
+        "email": "bob@sentineliq.demo",
+        "password_env": "SEED_BOB_PASSWORD",
+        "password": "Bob123!",
+        "principal_env": "SALVERIS_BOB_ACTING_PRINCIPAL_ID",
+        "principal": "10000000-0000-0000-0000-000000000032",
+    },
+    {
+        "name": "Rita",
+        "role": "HR",
+        "email": "rita@hr.local",
+        "password_env": "SEED_RITA_PASSWORD",
+        "password": "Rita123!",
+        "principal_env": "SALVERIS_RITA_ACTING_PRINCIPAL_ID",
+        "principal": "10000000-0000-0000-0000-000000000034",
+    },
+    {
+        "name": "Karan Malhotra",
+        "role": "Operations Manager",
+        "email": "karan.malhotra@sentineliq.demo",
+        "password_env": "SEED_KARAN_PASSWORD",
+        "password": "Karan123!",
+        "principal_env": "SALVERIS_KARAN_ACTING_PRINCIPAL_ID",
+        "principal": "10000000-0000-0000-0000-00000000003f",
+    },
+)
 
 
 def _env(name: str, default: str = "") -> str:
@@ -61,6 +103,24 @@ def apply_schema() -> None:
     _logger.info("user_master auth columns applied")
 
 
+def find_user(db, *, name: str | None = None, email: str | None = None) -> UserMaster | None:
+    if email:
+        user = (
+            db.query(UserMaster)
+            .filter(UserMaster.email.ilike(email.strip().lower()))
+            .first()
+        )
+        if user is not None:
+            return user
+    if name:
+        return (
+            db.query(UserMaster)
+            .filter(UserMaster.name.ilike(name.strip()))
+            .first()
+        )
+    return None
+
+
 def upsert_user(
     db,
     *,
@@ -69,61 +129,69 @@ def upsert_user(
     role: str,
     password: str,
     external_reference: str,
+    overwrite_password: bool = True,
+    overwrite_email: bool = True,
+    overwrite_principal: bool = True,
 ) -> UserMaster:
     email_norm = email.strip().lower()
-    user = (
-        db.query(UserMaster)
-        .filter(UserMaster.email.ilike(email_norm))
-        .first()
-    )
+    user = find_user(db, name=name, email=email_norm)
     created = user is None
     if user is None:
         user = UserMaster(email=email_norm, name=name.strip(), active=True)
         db.add(user)
+        overwrite_password = True
+        overwrite_email = True
+        overwrite_principal = True
 
     user.name = name.strip()
-    user.role = role.strip() or user.role
+    if role.strip():
+        user.role = role.strip()
     user.active = True
-    user.password_hash = hash_password(password)
-    user.external_reference = external_reference.strip()
+    if overwrite_email or not (user.email or "").strip():
+        user.email = email_norm
+    if overwrite_principal or not (user.external_reference or "").strip():
+        user.external_reference = external_reference.strip()
+    if overwrite_password or not (user.password_hash or "").strip():
+        user.password_hash = hash_password(password)
     db.commit()
     db.refresh(user)
     _logger.info(
-        "User credentials upserted (user_id=%s, created=%s, "
+        "User credentials upserted (user_id=%s, created=%s, email='%s', "
         "external_reference='%s')",
         user.user_id,
         created,
+        user.email,
         user.external_reference,
     )
     return user
 
 
-def seed_alice_bob(alice_password: str, bob_password: str) -> None:
-    alice_ref = _env("SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID", DEFAULT_ALICE_PRINCIPAL)
-    bob_ref = _env("SALVERIS_BOB_ACTING_PRINCIPAL_ID", DEFAULT_BOB_PRINCIPAL)
-    if not alice_ref or not bob_ref:
-        raise SystemExit(
-            "Alice/Bob Salveris principal IDs are missing. Set "
-            "SALVERIS_DEFAULT_ACTING_PRINCIPAL_ID and SALVERIS_BOB_ACTING_PRINCIPAL_ID."
-        )
+def seed_demo_users(*, reset_passwords: bool) -> None:
     db = SessionLocal()
     try:
-        upsert_user(
-            db,
-            email=ALICE_EMAIL,
-            name="Alice",
-            role="Ops Engineer",
-            password=alice_password,
-            external_reference=alice_ref,
-        )
-        upsert_user(
-            db,
-            email=BOB_EMAIL,
-            name="Bob",
-            role="Ops Engineer",
-            password=bob_password,
-            external_reference=bob_ref,
-        )
+        for spec in _BOOTSTRAP_USERS:
+            existing = find_user(db, name=spec["name"], email=spec["email"])
+            email = spec["email"]
+            principal = _env(spec["principal_env"], spec["principal"])
+            password = _env(spec["password_env"], spec["password"])
+            if existing is not None:
+                if (existing.email or "").strip():
+                    email = existing.email.strip()
+                if (existing.external_reference or "").strip():
+                    principal = existing.external_reference.strip()
+                elif not _env(spec["principal_env"]):
+                    principal = spec["principal"]
+            upsert_user(
+                db,
+                email=email,
+                name=spec["name"],
+                role=spec["role"],
+                password=password,
+                external_reference=principal,
+                overwrite_password=reset_passwords,
+                overwrite_email=False,
+                overwrite_principal=False,
+            )
     finally:
         db.close()
 
@@ -133,7 +201,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--seed-alice-bob",
         action="store_true",
-        help="Upsert Alice and Bob mapped to Salveris acting principals",
+        help="Insert Alice, Bob, Rita, and Karan Malhotra when missing; "
+        "keep existing DB email (notification address). Fill empty "
+        "password hash and Salveris principal",
+    )
+    parser.add_argument(
+        "--reset-passwords",
+        action="store_true",
+        help="With --seed-alice-bob, replace password hashes from env or bootstrap",
     )
     parser.add_argument("--email")
     parser.add_argument("--name")
@@ -145,10 +220,11 @@ def main(argv: list[str] | None = None) -> int:
     apply_schema()
 
     if args.seed_alice_bob:
-        alice_password = _env("SEED_ALICE_PASSWORD", DEFAULT_ALICE_PASSWORD)
-        bob_password = _env("SEED_BOB_PASSWORD", DEFAULT_BOB_PASSWORD)
-        seed_alice_bob(alice_password, bob_password)
-        print("Seeded Alice and Bob (passwords not printed).")
+        seed_demo_users(reset_passwords=args.reset_passwords)
+        print(
+            "Seeded Alice, Bob, Rita, and Karan Malhotra from user_master "
+            "(passwords not printed)."
+        )
         return 0
 
     missing = [

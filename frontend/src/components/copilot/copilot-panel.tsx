@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,23 +7,47 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   api,
   type CopilotAskResponse,
   type CopilotSearchResponse,
 } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth";
+import { CopilotAnswerMarkdown } from "@/components/copilot/copilot-answer-markdown";
+import { useCopilot } from "@/components/copilot/copilot-context";
 
 type Mode = "ask" | "search";
 
+/** Top-bar control that opens the shared Copilot dialog. */
+export function CopilotTopbarButton() {
+  const { openCopilot } = useCopilot();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      aria-label="Ask SentryyIQ Copilot"
+      onClick={openCopilot}
+    >
+      <MessageSquare className="h-4 w-4" />
+      <span className="hidden sm:inline">Copilot</span>
+    </Button>
+  );
+}
+
+/** Hosted once in the app shell — large centered panel for long answers. */
 export function CopilotPanel() {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen } = useCopilot();
+  const { user } = useAuth();
+  const activeUserName = user?.name?.trim() || null;
+  const activeUserRole = user?.role?.trim() || null;
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<Mode>("ask");
   const [loading, setLoading] = useState(false);
@@ -58,31 +82,43 @@ export function CopilotPanel() {
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          aria-label="Ask SentryyIQ Copilot"
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span className="hidden sm:inline">Copilot</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="flex w-full flex-col gap-4 sm:max-w-md lg:max-w-lg"
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        className={
+          "flex h-[min(92vh,880px)] w-[min(100vw-1.5rem,52rem)] max-w-none " +
+          "flex-col gap-4 overflow-hidden p-5 sm:p-6"
+        }
       >
-        <SheetHeader>
-          <SheetTitle>Ask SentryyIQ Copilot</SheetTitle>
-          <SheetDescription>
+        <DialogHeader className="shrink-0 space-y-1.5 pr-8 text-left">
+          <DialogTitle>Ask SentryyIQ Copilot</DialogTitle>
+          <DialogDescription>
             Answer returns a grounded reply with sources. Search returns matching
             passages only — no answer.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex gap-2">
+        {activeUserName ? (
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+            <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="min-w-0 truncate">
+              <span className="text-muted-foreground">Active user</span>
+              <span className="mx-1.5 text-muted-foreground">·</span>
+              <span className="font-medium">{activeUserName}</span>
+              {activeUserRole ? (
+                <>
+                  <span className="mx-1.5 text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">{activeUserRole}</span>
+                </>
+              ) : null}
+            </p>
+          </div>
+        ) : (
+          <p className="shrink-0 text-sm text-muted-foreground">
+            Sign in to attribute Copilot asks to an active user.
+          </p>
+        )}
+
+        <div className="flex shrink-0 gap-2">
           <Button
             type="button"
             size="sm"
@@ -105,7 +141,7 @@ export function CopilotPanel() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="What does the operations guide say about…"
-          className="min-h-[100px] resize-none"
+          className="min-h-[88px] shrink-0 resize-none"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
@@ -114,7 +150,12 @@ export function CopilotPanel() {
           }}
         />
 
-        <Button type="button" onClick={() => void onSubmit()} disabled={loading || !question.trim()}>
+        <Button
+          type="button"
+          className="shrink-0 self-start"
+          onClick={() => void onSubmit()}
+          disabled={loading || !question.trim()}
+        >
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -128,26 +169,31 @@ export function CopilotPanel() {
         </Button>
 
         {error ? (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="shrink-0 text-sm text-destructive" role="alert">
             {error}
           </p>
         ) : null}
 
-        <Separator />
+        <Separator className="shrink-0" />
 
-        <ScrollArea className="min-h-0 flex-1 pr-2">
+        <ScrollArea className="min-h-0 flex-1 pr-3">
           {askResult ? (
             <div className="space-y-4 pb-4">
               <section>
                 <h3 className="mb-2 text-sm font-semibold">Answer</h3>
-                <p className="whitespace-pre-wrap text-sm text-foreground">
-                  {askResult.answer || "No answer returned."}
-                </p>
+                <CopilotAnswerMarkdown content={askResult.answer || ""} />
               </section>
               {askResult.confidence ? (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Confidence:</span>
-                  <Badge variant="secondary">{askResult.confidence}</Badge>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Confidence:</span>
+                    <Badge variant="secondary">{askResult.confidence}</Badge>
+                  </div>
+                  {askResult.confidence_rationale ? (
+                    <p className="max-w-prose text-muted-foreground">
+                      {askResult.confidence_rationale}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {askResult.sources?.length ? (
@@ -186,7 +232,10 @@ export function CopilotPanel() {
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-medium">{hit.title}</span>
                         {hit.score != null ? (
-                          <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 font-mono text-[10px]"
+                          >
                             {Number(hit.score).toFixed(2)}
                           </Badge>
                         ) : null}
@@ -204,7 +253,7 @@ export function CopilotPanel() {
             </div>
           ) : null}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

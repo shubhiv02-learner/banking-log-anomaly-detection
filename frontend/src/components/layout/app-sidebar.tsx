@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, AlertTriangle, Clock, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  ShieldCheck,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -15,13 +23,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useCopilot } from "@/components/copilot/copilot-context";
 import { useAuth } from "@/lib/auth";
 
 const navItems = [
   { title: "Executive Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Alerts Center", url: "/alerts", icon: AlertTriangle },
   { title: "Service Analytics", url: "/analytics", icon: Activity },
-  { title: "Incidents Center", url: "/incidents", icon: Clock }
+  { title: "Incidents Center", url: "/incidents", icon: Clock },
 ];
 
 export function AppSidebar() {
@@ -30,6 +39,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isActive = (url: string) =>
     url === "/" ? pathname === "/" : pathname.startsWith(url);
+  const { openCopilot } = useCopilot();
   const { user, logout } = useAuth();
   const displayName = user?.name || "Signed in";
   const displayEmail = user?.email || "";
@@ -78,16 +88,40 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Assistant</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  type="button"
+                  tooltip="Ask SentryyIQ Copilot"
+                  onClick={openCopilot}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {!collapsed && <span>Copilot</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex flex-col gap-2 px-2 py-2">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold"
+              title={displayName}
+            >
               {initials}
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Active user
+                </div>
                 <div className="truncate text-xs font-medium">{displayName}</div>
                 {displayEmail ? (
                   <div className="truncate text-[10px] text-muted-foreground">

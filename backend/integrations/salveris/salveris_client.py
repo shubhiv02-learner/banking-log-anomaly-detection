@@ -36,6 +36,8 @@ _logger = get_logger(__name__)
 
 CAPABILITY_KNOWLEDGE_SEARCH = "KNOWLEDGE_SEARCH"
 CAPABILITY_KNOWLEDGE_ANSWER = "KNOWLEDGE_ANSWER"
+HEADER_CALLER_PROFILE = "X-Salveris-Caller-Profile"
+DEFAULT_CALLER_PROFILE = "sentryyiq"
 
 
 class SalverisClient:
@@ -50,6 +52,7 @@ class SalverisClient:
             "X-Salveris-Calling-Platform-Id": self._settings.calling_platform_id,
             "X-Salveris-Service-Principal-Id": self._settings.service_principal_id,
             "X-Salveris-Acting-Principal-Id": acting_principal_id,
+            HEADER_CALLER_PROFILE: DEFAULT_CALLER_PROFILE,
         }
 
     def _build_body(self, query: str) -> dict[str, Any]:
@@ -305,8 +308,12 @@ class SalverisClient:
             or ""
         )
         confidence_raw = raw.get("confidence") or raw.get("confidence_level")
+        confidence_rationale = None
         if isinstance(confidence_raw, dict):
             confidence = confidence_raw.get("level")
+            rationale_raw = confidence_raw.get("rationale")
+            if rationale_raw is not None and str(rationale_raw).strip():
+                confidence_rationale = str(rationale_raw).strip()
         else:
             confidence = confidence_raw
         if confidence is not None:
@@ -336,5 +343,6 @@ class SalverisClient:
         return CopilotAskResponse(
             answer=str(answer),
             confidence=confidence,
+            confidence_rationale=confidence_rationale,
             sources=sources,
         )

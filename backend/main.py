@@ -1,7 +1,8 @@
 import re
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Query
+from typing import Optional
 from sqlalchemy.orm import Session, defer
 from fastapi.middleware.cors import CORSMiddleware
 from .notification import notify_n8n
@@ -196,6 +197,22 @@ def recent_window_metrics(
     return rows
 
 @app.get(
+    "/window-metrics/{metric_id}/summary",
+    response_model=schemas.WindowMetricsTelemetrySummary,
+)
+def get_window_metric_telemetry_summary(
+    metric_id: int,
+    db: Session = Depends(get_db)
+):
+    summary = crud.get_window_metric_telemetry_summary(db, metric_id)
+    if summary is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Window metric not found"
+        )
+    return summary
+
+@app.get(
     "/window-metrics/{metric_id}",
     response_model=schemas.WindowMetricResponse
 )
@@ -274,12 +291,33 @@ def get_incidents(
 def get_agent_incidents(
     skip: int = 0,
     limit: int = 5,
-    db: Session = Depends(get_db)
+    service: Optional[list[str]] = Query(default=None),
+    priority: Optional[list[str]] = Query(default=None),
+    status: Optional[list[str]] = Query(default=None),
+    assignee_scope: Optional[str] = Query(default=None),
+    assignee: Optional[list[str]] = Query(default=None),
+    db: Session = Depends(get_db),
 ):
+    """
+    Lists incidents by status.
+
+    When ``status`` is omitted, defaults to OPEN only (open queue).
+    Salveris sends ``status=OPEN&status=ASSIGNED`` for active / in-progress
+    queries. Optional repeated ``service`` and ``priority`` prefilter the
+    result (outbound authZ allow-lists).
+
+    ``assignee_scope=mine`` with ``assignee`` names keeps OPEN/queue rows plus
+    ASSIGNED rows for those names (operators). Omit or ``all`` for Ops Manager.
+    """
     incidents = crud.get_agent_incidents(
         db=db,
         skip=skip,
-        limit=limit
+        limit=limit,
+        services=service,
+        priorities=priority,
+        statuses=status,
+        assignee_scope=assignee_scope,
+        assignees=assignee,
     )
     return incidents
 
@@ -290,31 +328,24 @@ def get_agent_incidents(
 )
 def get_agent_incident_by_id(
     ind_details: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    x_salveris_acting_principal_id: Optional[str] = Header(
+        default=None,
+        alias="X-Salveris-Acting-Principal-Id",
+    ),
 ):
-    # Extract the last number mentioned
-    match = re.findall(r"\d+", ind_details)
-
-    if match:
-        incident_no = match[-1]
-        incident = crud.get_agent_incident_by_id(
-        db,
-        incident_no
-    )
-
-        if incident is None:
-            raise HTTPException(
+    if x_salveris_acting_principal_id:
+        logger.info(
+            "Salveris acting principal on incident details: %s",
+            x_salveris_acting_principal_id,
+        )
+    incident = crud.get_agent_incident_by_id(db, ind_details)
+    if incident is None:
+        raise HTTPException(
             status_code=404,
             detail="Incident not found"
         )
-
-        return incident
-
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Incident number not found."
-        )
+    return incident
    
 #Get User details for agent 
 @app.get(
@@ -326,6 +357,51 @@ def get_users(
 ):
     users = crud.get_users(db=db)
     return users
+
+
+@app.get(
+    "/agent/error_mapping",
+    response_model=schemas.ErrorMappingListResponse,
+)
+def list_agent_error_mapping(
+    db: Session = Depends(get_db),
+    x_salveris_acting_principal_id: Optional[str] = Header(
+        default=None,
+        alias="X-Salveris-Acting-Principal-Id",
+    ),
+):
+    """Returns the full error_mapping catalog for Salveris list-all live fetch."""
+    if x_salveris_acting_principal_id:
+        logger.info(
+            "Salveris acting principal on error_mapping list: %s",
+            x_salveris_acting_principal_id,
+        )
+    return crud.list_error_mappings(db)
+
+
+@app.get(
+    "/agent/error_mapping/{error_code}",
+    response_model=schemas.ErrorMappingResponse,
+)
+def get_agent_error_mapping(
+    error_code: str,
+    db: Session = Depends(get_db),
+    x_salveris_acting_principal_id: Optional[str] = Header(
+        default=None,
+        alias="X-Salveris-Acting-Principal-Id",
+    ),
+):
+    """Returns one operational error_mapping catalog row for Salveris live fetch."""
+    if x_salveris_acting_principal_id:
+        logger.info(
+            "Salveris acting principal on error_mapping: %s code=%s",
+            x_salveris_acting_principal_id,
+            error_code,
+        )
+    mapping = crud.get_error_mapping_by_code(db, error_code)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="Error mapping not found")
+    return mapping
 
 
 @app.get(
@@ -518,30 +594,63 @@ def get_agent_alert_details_by_id(
     if match:
         ticket_id = match[-1]
         alert_details = crud.get_agent_alert_details_by_id(
-            db,ticket_id
+            db, ticket_id
         )
-
-        if ticket_id is None:
+        if alert_details is None:
             raise HTTPException(
-            status_code=404,
-            detail="Alert details not found."
-        )
-
+                status_code=404,
+                detail="Alert details not found.",
+            )
         return alert_details
 
-    else:
+    raise HTTPException(
+        status_code=400,
+        detail="Alert details not found.",
+    )
+
+##################Payload Details - Raw telemetry data for alert ###################
+
+@app.get(
+    "/agent/alerts/telemetry_summary/{ind_details}",
+    response_model=schemas.WindowMetricsTelemetrySummary,
+)
+def get_agent_alert_telemetry_summary(
+    ind_details: str,
+    db: Session = Depends(get_db),
+    x_salveris_acting_principal_id: Optional[str] = Header(
+        default=None,
+        alias="X-Salveris-Acting-Principal-Id",
+    ),
+):
+    if x_salveris_acting_principal_id:
+        logger.info(
+            "Salveris acting principal on telemetry summary: %s",
+            x_salveris_acting_principal_id,
+        )
+    match = re.findall(r"\d+", ind_details)
+    if not match:
         raise HTTPException(
             status_code=400,
             detail="Alert details not found."
         )
-
-##################Payload Details - Raw telemetry data for alert ###################
+    summary = crud.get_alert_telemetry_summary(db, match[-1])
+    if summary is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Alert details not found."
+        )
+    return summary
 
 @app.get(
     "/agent/alerts/raw_data/{ind_details}"
 )
 def get_agent_alert_payload_by_id(
-    ind_details: str, db: Session = Depends(get_db)
+    ind_details: str,
+    skip: int = 0,
+    limit: int | None = None,
+    time_from: str | None = None,
+    time_to: str | None = None,
+    db: Session = Depends(get_db)
 ):
     # Extract the last number mentioned
     match = re.findall(r"\d+", ind_details)
@@ -554,9 +663,18 @@ def get_agent_alert_payload_by_id(
             detail="Alert details not found."
         )
         json_payload = crud.get_agent_alert_payload_by_id(
-            db,ticket_id
+            db,
+            ticket_id,
+            skip=skip,
+            limit=limit,
+            time_from=time_from,
+            time_to=time_to,
         )
-
+        if json_payload is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Alert details not found.",
+            )
         return json_payload
 
     else:
