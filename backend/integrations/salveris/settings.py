@@ -64,7 +64,7 @@ def _acting_principal_from_user_master(name: str) -> str:
 
 # Live investigate answers call Ollama after outbound fetches; 30s is too short
 # when the model is cold or the grounded prompt is large.
-_DEFAULT_TIMEOUT_SECONDS = 120.0
+_DEFAULT_TIMEOUT_SECONDS = 300.0
 
 
 @dataclass(frozen=True)

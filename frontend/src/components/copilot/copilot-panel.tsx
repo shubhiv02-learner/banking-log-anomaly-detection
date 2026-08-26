@@ -85,7 +85,7 @@ export function CopilotPanel() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         className={
-          "flex h-[min(92vh,880px)] w-[min(100vw-1.5rem,52rem)] max-w-none " +
+          "flex h-[min(92vh,900px)] w-[min(100vw-1.5rem,72rem)] max-w-none " +
           "flex-col gap-4 overflow-hidden p-5 sm:p-6"
         }
       >
@@ -176,38 +176,40 @@ export function CopilotPanel() {
 
         <Separator className="shrink-0" />
 
-        <ScrollArea className="min-h-0 flex-1 pr-3">
+        <ScrollArea className="min-h-0 w-full flex-1 pr-3">
           {askResult ? (
-            <div className="space-y-4 pb-4">
-              <section>
+            <div className="w-full max-w-none space-y-4 pb-4">
+              <section className="w-full max-w-none">
                 <h3 className="mb-2 text-sm font-semibold">Answer</h3>
                 <CopilotAnswerMarkdown content={askResult.answer || ""} />
               </section>
               {askResult.confidence ? (
-                <div className="space-y-1 text-sm">
+                <div className="w-full max-w-none space-y-1 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Confidence:</span>
                     <Badge variant="secondary">{askResult.confidence}</Badge>
                   </div>
                   {askResult.confidence_rationale ? (
-                    <p className="max-w-prose text-muted-foreground">
+                    <p className="w-full max-w-none text-muted-foreground">
                       {askResult.confidence_rationale}
                     </p>
                   ) : null}
                 </div>
               ) : null}
               {askResult.sources?.length ? (
-                <section>
+                <section className="w-full max-w-none">
                   <h3 className="mb-2 text-sm font-semibold">Sources</h3>
-                  <ul className="space-y-2">
+                  <ul className="w-full space-y-2">
                     {askResult.sources.map((src, i) => (
                       <li
                         key={`${src.title}-${i}`}
-                        className="rounded-md border border-border p-2 text-sm"
+                        className="w-full rounded-md border border-border p-2 text-sm"
                       >
                         <div className="font-medium">{src.title}</div>
                         {src.snippet ? (
-                          <p className="mt-1 text-muted-foreground">{src.snippet}</p>
+                          <p className="mt-1 w-full text-muted-foreground">
+                            {src.snippet}
+                          </p>
                         ) : null}
                       </li>
                     ))}
@@ -218,16 +220,16 @@ export function CopilotPanel() {
           ) : null}
 
           {searchResult ? (
-            <div className="space-y-3 pb-4">
+            <div className="w-full max-w-none space-y-3 pb-4">
               <h3 className="text-sm font-semibold">Search</h3>
               {searchResult.hits.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No matching passages.</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="w-full space-y-2">
                   {searchResult.hits.map((hit, i) => (
                     <li
                       key={`${hit.title}-${i}`}
-                      className="rounded-md border border-border p-2 text-sm"
+                      className="w-full rounded-md border border-border p-2 text-sm"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-medium">{hit.title}</span>
@@ -241,10 +243,14 @@ export function CopilotPanel() {
                         ) : null}
                       </div>
                       {hit.snippet ? (
-                        <p className="mt-1 text-muted-foreground">{hit.snippet}</p>
+                        <p className="mt-1 w-full text-muted-foreground">
+                          {hit.snippet}
+                        </p>
                       ) : null}
                       {hit.source ? (
-                        <p className="mt-1 text-xs text-muted-foreground">{hit.source}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {hit.source}
+                        </p>
                       ) : null}
                     </li>
                   ))}
