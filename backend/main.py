@@ -5,19 +5,19 @@ from fastapi import FastAPI, Depends, HTTPException, Header, Query
 from typing import Optional
 from sqlalchemy.orm import Session, defer
 from fastapi.middleware.cors import CORSMiddleware
-from .notification import notify_n8n
-from .database import SessionLocal
+from backend.notification import notify_n8n
+from backend.database import SessionLocal
 import backend.crud  as crud
 import backend.schemas as schemas
-from .db_models import  Ticket, UserMaster, Alert, WindowMetrics, IncidentAssignmentHistory
+from backend.db_models import  Ticket, UserMaster, Alert, WindowMetrics, IncidentAssignmentHistory
 
 from rapidfuzz import process, fuzz
-from .config import (
+from backend.config import (
     N8N_ASSIGN_WEBHOOK,
     N8N_RESOLVE_WEBHOOK,
     N8N_CLOSE_WEBHOOK,
 )
-from .logging_config import get_logger, setup_logging
+from backend.logging_config import get_logger, setup_logging
 from backend.services.incident_actions import (
     IncidentActionError,
     apply_dashboard_incident_action,
