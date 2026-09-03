@@ -60,17 +60,17 @@ def get_dashboard_summary(db):
 
         "high":
             db.query(Alert)
-            .filter(Alert.priority == "High")
+            .filter(Alert.priority == "High", Alert.status == "OPEN" )
             .count(),
 
         "medium":
             db.query(Alert)
-            .filter(Alert.priority == "Medium")
+            .filter(Alert.priority == "Medium", Alert.status == "OPEN" )
             .count(),
          
         "low":
             db.query(Alert)
-            .filter(Alert.priority == "Low")
+            .filter(Alert.priority == "Low", Alert.status == "OPEN" )
             .count()
 }
 
