@@ -83,7 +83,7 @@ reportlab==4.5.1
 rich==15.0.0
 rich-toolkit==0.20.0
 rignore==0.7.6
-scikit-learn==1.9.0
+scikit-learn==1.8.0
 scipy==1.17.1
 seaborn==0.13.2
 sentry-sdk==2.61.1
