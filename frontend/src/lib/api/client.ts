@@ -118,6 +118,13 @@ export interface CopilotAskResponse {
   confidence?: string | null;
   confidence_rationale?: string | null;
   sources: SourceRef[];
+  conversation_id?: string | null;
+  investigation_session_id?: string | null;
+}
+
+export interface CopilotCloseResponse {
+  conversation_id: string;
+  status: string;
 }
 
 export interface AuthUser {
@@ -180,8 +187,20 @@ export const api = {
     http<WindowMetricFull>(`/window-metrics/details/${id}`),
   copilotSearch: (question: string, context?: CopilotContext) =>
     httpPost<CopilotSearchResponse>("/copilot/search", { question, context }),
-  copilotAsk: (question: string, context?: CopilotContext) =>
-    httpPost<CopilotAskResponse>("/copilot/ask", { question, context }),
+  copilotAsk: (
+    question: string,
+    context?: CopilotContext,
+    conversationId?: string | null,
+  ) =>
+    httpPost<CopilotAskResponse>("/copilot/ask", {
+      question,
+      context,
+      conversation_id: conversationId ?? undefined,
+    }),
+  copilotClose: (conversationId: string) =>
+    httpPost<CopilotCloseResponse>("/copilot/close", {
+      conversation_id: conversationId,
+    }),
   listUsers: () => http<DashboardUser[]>("/users"),
   updateIncident: (body: IncidentActionRequest) =>
     httpPost<IncidentActionResponse>("/tickets/assign", body),

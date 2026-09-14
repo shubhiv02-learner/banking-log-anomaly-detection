@@ -985,6 +985,8 @@ from backend.integrations.salveris.exceptions import (
 from backend.integrations.salveris.models import (
     CopilotAskRequest,
     CopilotAskResponse,
+    CopilotCloseRequest,
+    CopilotCloseResponse,
     CopilotSearchRequest,
     CopilotSearchResponse,
 )
@@ -1140,6 +1142,7 @@ def copilot_ask(
             request.question,
             context=request.context,
             user=current_user,
+            conversation_id=request.conversation_id,
         )
         logger.info(
             "Copilot ask completed (%d source(s))",
@@ -1150,6 +1153,34 @@ def copilot_ask(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except SalverisError as exc:
         logger.error("Copilot ask failed", exc_info=True)
+        raise _map_salveris_http(exc) from exc
+
+
+@app.post("/copilot/close", response_model=CopilotCloseResponse)
+def copilot_close(
+    request: CopilotCloseRequest,
+    current_user: UserMaster = Depends(get_current_user),
+):
+    logger.info(
+        "Copilot close started (user_id=%s, conversation_id='%s')",
+        current_user.user_id,
+        request.conversation_id,
+    )
+    try:
+        result = copilot_service.close(
+            request.conversation_id,
+            user=current_user,
+        )
+        logger.info(
+            "Copilot close completed (conversation_id='%s', status='%s')",
+            result.conversation_id,
+            result.status,
+        )
+        return result
+    except ActingPrincipalMissing as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except SalverisError as exc:
+        logger.error("Copilot close failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
 
 

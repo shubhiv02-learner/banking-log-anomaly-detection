@@ -7,6 +7,7 @@ from typing import Optional
 from backend.integrations.salveris.exceptions import SalverisConfigError
 from backend.integrations.salveris.models import (
     CopilotAskResponse,
+    CopilotCloseResponse,
     CopilotContext,
     CopilotSearchResponse,
 )
@@ -80,6 +81,7 @@ class CopilotService:
         context: Optional[CopilotContext] = None,
         *,
         user: UserMaster,
+        conversation_id: str | None = None,
     ) -> CopilotAskResponse:
         acting_id = resolve_acting_principal(user)
         _logger.info(
@@ -90,18 +92,44 @@ class CopilotService:
             acting_id,
         )
         _logger.debug(
-            "Copilot ask request (question_len=%d, has_context=%s)",
+            "Copilot ask request (question_len=%d, has_context=%s, "
+            "has_conversation_id=%s)",
             len(question),
             context is not None,
+            conversation_id is not None,
         )
         result = self._get_client().answer(
             question,
             acting_principal_id=acting_id,
             context=context,
+            conversation_id=conversation_id,
         )
         _logger.info(
             "Copilot ask completed (%d source(s))",
             len(result.sources),
+        )
+        return result
+
+    def close(
+        self,
+        conversation_id: str,
+        *,
+        user: UserMaster,
+    ) -> CopilotCloseResponse:
+        acting_id = resolve_acting_principal(user)
+        _logger.info(
+            "Copilot close started (user_id=%s, conversation_id='%s')",
+            user.user_id,
+            conversation_id,
+        )
+        result = self._get_client().close_conversation(
+            conversation_id,
+            acting_principal_id=acting_id,
+        )
+        _logger.info(
+            "Copilot close completed (conversation_id='%s', status='%s')",
+            result.conversation_id,
+            result.status,
         )
         return result
 

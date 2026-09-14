@@ -22,6 +22,7 @@ class CopilotSearchRequest(BaseModel):
 class CopilotAskRequest(BaseModel):
     question: str = Field(..., min_length=1)
     context: Optional[CopilotContext] = None
+    conversation_id: Optional[str] = None
 
 
 class EvidenceHit(BaseModel):
@@ -47,3 +48,14 @@ class CopilotAskResponse(BaseModel):
     confidence: Optional[str] = None
     confidence_rationale: Optional[str] = None
     sources: list[SourceRef] = Field(default_factory=list)
+    conversation_id: Optional[str] = None
+    investigation_session_id: Optional[str] = None
+
+
+class CopilotCloseRequest(BaseModel):
+    conversation_id: str = Field(..., min_length=1)
+
+
+class CopilotCloseResponse(BaseModel):
+    conversation_id: str
+    status: str

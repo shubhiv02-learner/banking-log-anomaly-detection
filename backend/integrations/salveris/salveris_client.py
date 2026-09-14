@@ -24,6 +24,7 @@ from backend.integrations.salveris.exceptions import (
 )
 from backend.integrations.salveris.models import (
     CopilotAskResponse,
+    CopilotCloseResponse,
     CopilotContext,
     CopilotSearchResponse,
     EvidenceHit,
@@ -55,9 +56,15 @@ class SalverisClient:
             HEADER_CALLER_PROFILE: DEFAULT_CALLER_PROFILE,
         }
 
-    def _build_body(self, query: str) -> dict[str, Any]:
-        # KnowledgeSearch/AnswerRequestModel: extra="forbid" — query only.
-        return {"query": query}
+    def _build_body(
+        self,
+        query: str,
+        conversation_id: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"query": query}
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        return body
 
     def _log_outbound_identity(
         self,
@@ -228,18 +235,19 @@ class SalverisClient:
         *,
         acting_principal_id: str,
         context: Optional[CopilotContext] = None,
+        conversation_id: str | None = None,
     ) -> CopilotAskResponse:
         if not acting_principal_id:
             message = "acting_principal_id is required."
             _logger.error(message)
             raise SalverisError(message)
-        _ = context  # Salveris body forbids extra fields; context stays SentryyIQ-only.
+        _ = context  # Salveris body forbids unknown extras; context stays local.
 
         raw = self._request(
             "POST",
             "/v1/knowledge/answer",
             acting_principal_id=acting_principal_id,
-            json_body=self._build_body(query),
+            json_body=self._build_body(query, conversation_id=conversation_id),
             capability=CAPABILITY_KNOWLEDGE_ANSWER,
         )
         result = self._normalize_answer(raw)
@@ -248,6 +256,38 @@ class SalverisClient:
             len(result.sources),
         )
         return result
+
+    def close_conversation(
+        self,
+        conversation_id: str,
+        *,
+        acting_principal_id: str,
+    ) -> CopilotCloseResponse:
+        if not acting_principal_id:
+            message = "acting_principal_id is required."
+            _logger.error(message)
+            raise SalverisError(message)
+        if not conversation_id:
+            message = "conversation_id is required."
+            _logger.error(message)
+            raise SalverisError(message)
+        path = f"/v1/conversations/{conversation_id}/close"
+        raw = self._request(
+            "POST",
+            path,
+            acting_principal_id=acting_principal_id,
+            json_body={},
+            capability=CAPABILITY_KNOWLEDGE_ANSWER,
+        )
+        if not isinstance(raw, dict):
+            return CopilotCloseResponse(
+                conversation_id=conversation_id,
+                status="CLOSED",
+            )
+        return CopilotCloseResponse(
+            conversation_id=str(raw.get("conversation_id") or conversation_id),
+            status=str(raw.get("status") or "CLOSED"),
+        )
 
     @staticmethod
     def _normalize_search(raw: Any) -> CopilotSearchResponse:
@@ -345,4 +385,14 @@ class SalverisClient:
             confidence=confidence,
             confidence_rationale=confidence_rationale,
             sources=sources,
+            conversation_id=(
+                str(raw["conversation_id"])
+                if raw.get("conversation_id") is not None
+                else None
+            ),
+            investigation_session_id=(
+                str(raw["investigation_session_id"])
+                if raw.get("investigation_session_id") is not None
+                else None
+            ),
         )
