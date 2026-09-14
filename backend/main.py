@@ -1,5 +1,6 @@
 import re
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException, Header, Query
 from typing import Optional
@@ -103,10 +104,24 @@ def get_alerts(
     response_model=list[schemas.AlertResponse]
     )
 def recent_alerts(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(5, ge=1, le=50),
+    window_metric_id: list[int] | None = Query(None),
+    service: str | None = Query(None),
+    exclude_alert_id: int | None = Query(None),
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
     ):
 
-    return crud.get_recent_alerts(db)
+    return crud.get_recent_alerts(
+        db,
+        limit=limit,
+        window_metric_ids=window_metric_id,
+        service=service,
+        exclude_alert_id=exclude_alert_id,
+        start=start,
+        end=end,
+    )
 
 #Service Distribution
 @app.get(
@@ -177,12 +192,18 @@ def get_window_metrics_api(
 )
 def service_window_metrics(
     service: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=100),
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
 ):
 
     return crud.get_window_metrics_by_service(
         db,
-        service
+        service,
+        limit=limit,
+        start=start,
+        end=end,
     )
 
 @app.get(
@@ -190,11 +211,18 @@ def service_window_metrics(
     response_model=list[schemas.WindowMetricResponse]
 )
 def recent_window_metrics(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(10, ge=1, le=100),
+    start: Optional[datetime] = Query(None),
+    end: Optional[datetime] = Query(None),
 ):
 
-    rows = crud.get_recent_window_metrics(db)
-    return rows
+    return crud.get_recent_window_metrics(
+        db,
+        limit=limit,
+        start=start,
+        end=end,
+    )
 
 @app.get(
     "/window-metrics/{metric_id}/summary",

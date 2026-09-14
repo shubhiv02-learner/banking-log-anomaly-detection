@@ -34,14 +34,45 @@ def get_alerts(
 
 
 
-def get_recent_alerts(db, limit: int = 5):
+def _parse_optional_datetime(value):
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    return datetime.fromisoformat(text)
 
+
+def get_recent_alerts(
+    db,
+    limit: int = 20,
+    window_metric_ids=None,
+    service: str | None = None,
+    exclude_alert_id: int | None = None,
+    start=None,
+    end=None,
+):
+    query = db.query(Alert)
+    ids = [int(item) for item in (window_metric_ids or []) if item is not None]
+    if ids:
+        query = query.filter(Alert.window_metric_id.in_(ids))
+    if service:
+        query = query.filter(Alert.service == service)
+    if exclude_alert_id is not None:
+        query = query.filter(Alert.id != exclude_alert_id)
+    start_at = _parse_optional_datetime(start)
+    end_at = _parse_optional_datetime(end)
+    if start_at is not None:
+        query = query.filter(Alert.created_at >= start_at)
+    if end_at is not None:
+        query = query.filter(Alert.created_at <= end_at)
     return (
-    db.query(Alert)
-    .order_by(Alert.created_at.desc())
-    .limit(limit)
-    .all()
-)
+        query.order_by(Alert.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 def get_dashboard_summary(db):
@@ -118,16 +149,31 @@ def get_window_metrics(
         .all()
     )
 
+def _apply_window_time_overlap(query, start=None, end=None):
+    start_at = _parse_optional_datetime(start)
+    end_at = _parse_optional_datetime(end)
+    if start_at is not None:
+        query = query.filter(WindowMetrics.window_end >= start_at)
+    if end_at is not None:
+        query = query.filter(WindowMetrics.window_start <= end_at)
+    return query
+
+
 def get_recent_window_metrics(
     db,
-    limit: int = 10
+    limit: int = 10,
+    start=None,
+    end=None,
 ):
 
-    return (
+    query = (
         db.query(WindowMetrics)
         .options(defer(WindowMetrics.payload_json))
         .options(defer(WindowMetrics.payload_summary))
-        .order_by(WindowMetrics.window_start.desc())
+    )
+    query = _apply_window_time_overlap(query, start, end)
+    return (
+        query.order_by(WindowMetrics.window_start.desc())
         .limit(limit)
         .all()
     )
@@ -135,15 +181,20 @@ def get_recent_window_metrics(
 def get_window_metrics_by_service(
     db,
     service: str,
-    limit: int = 50
+    limit: int = 50,
+    start=None,
+    end=None,
 ):
 
-    return (
+    query = (
         db.query(WindowMetrics)
         .options(defer(WindowMetrics.payload_json))
         .options(defer(WindowMetrics.payload_summary))
         .filter(WindowMetrics.service == service)
-        .order_by(WindowMetrics.window_start.desc())
+    )
+    query = _apply_window_time_overlap(query, start, end)
+    return (
+        query.order_by(WindowMetrics.window_start.desc())
         .limit(limit)
         .all()
     )
