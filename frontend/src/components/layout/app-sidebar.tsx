@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCopilot } from "@/components/copilot/copilot-context";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth-context";
 
 const navItems = [
   { title: "Executive Dashboard", url: "/", icon: LayoutDashboard },

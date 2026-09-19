@@ -25,7 +25,7 @@ import {
   type CopilotAskResponse,
   type CopilotSearchResponse,
 } from "@/lib/api/client";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth-context";
 import { CopilotAnswerMarkdown } from "@/components/copilot/copilot-answer-markdown";
 import { COPILOT_ASK_EXAMPLES } from "@/components/copilot/copilot-ask-examples";
 import { useCopilot } from "@/components/copilot/copilot-context";

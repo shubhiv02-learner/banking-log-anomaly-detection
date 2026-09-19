@@ -28,7 +28,7 @@ import { IncidentActionDialog } from "@/components/dashboard/incident-action-dia
 import { Button } from "@/components/ui/button";
 import { api, type DashboardUser, type IncidentAction } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth-context";
 
 import type { Ticket, AlertStatus, Priority } from "@/lib/api/types";
 
