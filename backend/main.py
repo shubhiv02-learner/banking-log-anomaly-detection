@@ -475,8 +475,8 @@ def assign_incident(
         request.action,
         request.assigned_to,
     )
-    # Extract the last number mentioned
-    match = re.findall(r"\d+", request.ticket_details)
+    ticket_text = (request.ticket_details or "").strip()
+    match = re.findall(r"\d+", ticket_text)
 
     if not match:
         raise HTTPException(
@@ -484,16 +484,22 @@ def assign_incident(
             detail="No incident number found."
         )
 
-    incident_no = match[-1]
     incident = (
         db.query(Ticket)
-        .filter(
-            Ticket.ticket_id.like(f"%{incident_no}%")
-        )
+        .filter(Ticket.ticket_id.ilike(ticket_text))
         .options(defer(Ticket.incident_summary))
         .order_by(Ticket.created_at.desc())
         .first()
     )
+    if incident is None:
+        incident_no = match[-1]
+        incident = (
+            db.query(Ticket)
+            .filter(Ticket.ticket_id.like(f"%{incident_no}%"))
+            .options(defer(Ticket.incident_summary))
+            .order_by(Ticket.created_at.desc())
+            .first()
+        )
 
     if request.action == schemas.IncidentAction.ASSIGNED and request.assigned_to == "SYSTEM":
         return {
@@ -506,6 +512,7 @@ def assign_incident(
             "status": "failed",
             "message": "Incident not found, recheck the ticket number"
         }
+    users = crud.get_users(db)
     result = get_assignee(request.assigned_to, users)
     if result["status"] not in ("system", "found"):
         return {
@@ -515,8 +522,12 @@ def assign_incident(
             }
     user_assignee = result["assignee"].upper() if result["assignee"] else None
     assignee_email = result["email"]
-    
-    if incident.assignee == user_assignee and request.action == schemas.IncidentAction.ASSIGNED:
+    same_assignee = (
+        normalize_name(incident.assignee or "")
+        == normalize_name(user_assignee or "")
+        and normalize_name(user_assignee or "") != ""
+    )
+    if same_assignee and request.action == schemas.IncidentAction.ASSIGNED:
         return {
             "status": "already_assigned",
             "message": f"Incident is already assigned to {user_assignee}."
@@ -1143,6 +1154,7 @@ def copilot_ask(
             context=request.context,
             user=current_user,
             conversation_id=request.conversation_id,
+            operator_action=request.operator_action,
         )
         logger.info(
             "Copilot ask completed (%d source(s))",

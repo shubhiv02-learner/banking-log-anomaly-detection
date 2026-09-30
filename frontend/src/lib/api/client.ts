@@ -113,6 +113,13 @@ export interface SourceRef {
   source?: string | null;
 }
 
+export type CopilotOperatorAction =
+  | "approve_mutate"
+  | "reject_mutate"
+  | "continue_page"
+  | "change_filter"
+  | "stop_wave";
+
 export interface CopilotAskResponse {
   answer: string;
   confidence?: string | null;
@@ -120,6 +127,11 @@ export interface CopilotAskResponse {
   sources: SourceRef[];
   conversation_id?: string | null;
   investigation_session_id?: string | null;
+  pending_mutate_incident?: string | null;
+  pending_mutate_assignee?: string | null;
+  pending_mutate_remarks?: string | null;
+  pending_wave_choice?: boolean | null;
+  continuation_available?: boolean | null;
 }
 
 export interface CopilotCloseResponse {
@@ -191,11 +203,13 @@ export const api = {
     question: string,
     context?: CopilotContext,
     conversationId?: string | null,
+    operatorAction?: CopilotOperatorAction,
   ) =>
     httpPost<CopilotAskResponse>("/copilot/ask", {
       question,
       context,
       conversation_id: conversationId ?? undefined,
+      ...(operatorAction ? { operator_action: operatorAction } : {}),
     }),
   copilotClose: (conversationId: string) =>
     httpPost<CopilotCloseResponse>("/copilot/close", {

@@ -82,6 +82,7 @@ class CopilotService:
         *,
         user: UserMaster,
         conversation_id: str | None = None,
+        operator_action: str | None = None,
     ) -> CopilotAskResponse:
         acting_id = resolve_acting_principal(user)
         _logger.info(
@@ -103,6 +104,8 @@ class CopilotService:
             acting_principal_id=acting_id,
             context=context,
             conversation_id=conversation_id,
+            operator_action=operator_action,
+            caller_display_name=user.name,
         )
         _logger.info(
             "Copilot ask completed (%d source(s))",

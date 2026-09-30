@@ -23,6 +23,7 @@ class CopilotAskRequest(BaseModel):
     question: str = Field(..., min_length=1)
     context: Optional[CopilotContext] = None
     conversation_id: Optional[str] = None
+    operator_action: Optional[str] = None
 
 
 class EvidenceHit(BaseModel):
@@ -50,6 +51,11 @@ class CopilotAskResponse(BaseModel):
     sources: list[SourceRef] = Field(default_factory=list)
     conversation_id: Optional[str] = None
     investigation_session_id: Optional[str] = None
+    pending_mutate_incident: str = ""
+    pending_mutate_assignee: str = ""
+    pending_mutate_remarks: str = ""
+    pending_wave_choice: bool = False
+    continuation_available: bool = False
 
 
 class CopilotCloseRequest(BaseModel):

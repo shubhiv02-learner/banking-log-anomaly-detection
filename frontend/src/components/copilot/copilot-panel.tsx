@@ -23,6 +23,7 @@ import {
 import {
   api,
   type CopilotAskResponse,
+  type CopilotOperatorAction,
   type CopilotSearchResponse,
 } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth-context";
@@ -66,7 +67,15 @@ export function CopilotPanel() {
     null,
   );
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [lastQuestion, setLastQuestion] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const pendingAssignment = Boolean(
+    askResult?.pending_mutate_incident?.trim(),
+  );
+  const pendingWave = Boolean(askResult?.pending_wave_choice);
+  const canContinue = Boolean(
+    askResult?.continuation_available || askResult?.pending_wave_choice,
+  );
 
   function onClear() {
     setQuestion("");
@@ -101,31 +110,59 @@ export function CopilotPanel() {
     window.setTimeout(() => questionRef.current?.focus(), 0);
   }
 
-  async function onSubmit() {
-    const q = question.trim();
+  async function askQuestion(
+    q: string,
+    operatorAction?: CopilotOperatorAction,
+  ) {
     if (!q || loading) return;
-
     setLoading(true);
     setError(null);
-    setAskResult(null);
     setSearchResult(null);
-
     try {
-      if (mode === "ask") {
-        const result = await api.copilotAsk(q, undefined, conversationId);
-        setAskResult(result);
-        if (result.conversation_id) {
-          setConversationId(result.conversation_id);
-        }
-      } else {
-        const result = await api.copilotSearch(q);
-        setSearchResult(result);
+      const result = await api.copilotAsk(
+        q,
+        undefined,
+        conversationId,
+        operatorAction,
+      );
+      setAskResult(result);
+      setLastQuestion(q);
+      if ((result.answer || "").startsWith("This chat is closed")) {
+        setConversationId(null);
+      } else if (result.conversation_id) {
+        setConversationId(result.conversation_id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function onSubmit() {
+    const q = question.trim();
+    if (!q || loading) return;
+    if (mode === "search") {
+      setLoading(true);
+      setError(null);
+      setAskResult(null);
+      setSearchResult(null);
+      try {
+        const result = await api.copilotSearch(q);
+        setSearchResult(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Request failed");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    await askQuestion(q);
+  }
+
+  function onOperatorChoice(action: CopilotOperatorAction) {
+    const q = lastQuestion.trim() || question.trim();
+    void askQuestion(q, action);
   }
 
   return (
@@ -231,6 +268,59 @@ export function CopilotPanel() {
                 "Ask"
               )}
             </Button>
+            {canContinue ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onOperatorChoice("continue_page")}
+                disabled={loading}
+              >
+                Continue
+              </Button>
+            ) : null}
+            {pendingWave ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onOperatorChoice("change_filter")}
+                  disabled={loading}
+                >
+                  Change filter
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onOperatorChoice("stop_wave")}
+                  disabled={loading}
+                >
+                  Stop
+                </Button>
+              </>
+            ) : null}
+            {pendingAssignment ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => onOperatorChoice("approve_mutate")}
+                  disabled={loading}
+                >
+                  Approve
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onOperatorChoice("reject_mutate")}
+                  disabled={loading}
+                >
+                  Reject
+                </Button>
+              </>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -240,15 +330,17 @@ export function CopilotPanel() {
             >
               Clear
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void onCloseConversation()}
-              disabled={loading}
-            >
-              Close
-            </Button>
+            {conversationId ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void onCloseConversation()}
+                disabled={loading}
+              >
+                Close
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"

@@ -60,10 +60,18 @@ class SalverisClient:
         self,
         query: str,
         conversation_id: str | None = None,
+        operator_action: str | None = None,
+        caller_display_name: str | None = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {"query": query}
         if conversation_id:
             body["conversation_id"] = conversation_id
+        action = (operator_action or "").strip()
+        if action:
+            body["operator_action"] = action
+        display_name = (caller_display_name or "").strip()
+        if display_name:
+            body["caller_display_name"] = display_name
         return body
 
     def _log_outbound_identity(
@@ -236,6 +244,8 @@ class SalverisClient:
         acting_principal_id: str,
         context: Optional[CopilotContext] = None,
         conversation_id: str | None = None,
+        operator_action: str | None = None,
+        caller_display_name: str | None = None,
     ) -> CopilotAskResponse:
         if not acting_principal_id:
             message = "acting_principal_id is required."
@@ -247,7 +257,12 @@ class SalverisClient:
             "POST",
             "/v1/knowledge/answer",
             acting_principal_id=acting_principal_id,
-            json_body=self._build_body(query, conversation_id=conversation_id),
+            json_body=self._build_body(
+                query,
+                conversation_id=conversation_id,
+                operator_action=operator_action,
+                caller_display_name=caller_display_name,
+            ),
             capability=CAPABILITY_KNOWLEDGE_ANSWER,
         )
         result = self._normalize_answer(raw)
@@ -395,4 +410,9 @@ class SalverisClient:
                 if raw.get("investigation_session_id") is not None
                 else None
             ),
+            pending_mutate_incident=str(raw.get("pending_mutate_incident") or ""),
+            pending_mutate_assignee=str(raw.get("pending_mutate_assignee") or ""),
+            pending_mutate_remarks=str(raw.get("pending_mutate_remarks") or ""),
+            pending_wave_choice=bool(raw.get("pending_wave_choice")),
+            continuation_available=bool(raw.get("continuation_available")),
         )
