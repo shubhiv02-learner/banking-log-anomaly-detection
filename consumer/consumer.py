@@ -101,9 +101,9 @@ try:
                 logger.error("Skipping malformed Kafka message: %s", e)
                 continue
 
-            raw_record_buffer[record["service"]].append(record)
             record = metrics_engine.update(record)
             service = record["service"]
+            raw_record_buffer[service].append(record)
             service_buffers[service].append(record)
 
             if current_time > window_end:
