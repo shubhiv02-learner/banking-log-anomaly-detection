@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -52,8 +53,15 @@ export function AppSidebar() {
     staleTime: Infinity,
   });
   const showBatch = runtimeConfig.data?.kafka_enabled === false;
+  const [batchLoading, setBatchLoading] = useState(false);
   const replay = useMutation({
-    mutationFn: api.replayLogs,
+    mutationFn: async () => {
+      try {
+        return await api.replayLogs();
+      } finally {
+        setBatchLoading(false);
+      }
+    },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       await queryClient.invalidateQueries({ queryKey: ["alerts"] });
@@ -69,6 +77,9 @@ export function AppSidebar() {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Batch load failed");
+    },
+    onSettled: () => {
+      setBatchLoading(false);
     },
   });
   const displayName = user?.name || "Signed in";
@@ -119,13 +130,17 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     type="button"
-                    tooltip="Load batch"
-                    disabled={replay.isPending}
-                    onClick={() => replay.mutate()}
+                    tooltip={batchLoading ? "Loading batch…" : "Load batch"}
+                    disabled={batchLoading}
+                    onClick={() => {
+                      if (batchLoading) return;
+                      setBatchLoading(true);
+                      replay.mutate();
+                    }}
                   >
                     <Upload className="h-4 w-4" />
                     {!collapsed && (
-                      <span>{replay.isPending ? "Loading batch…" : "Load batch"}</span>
+                      <span>{batchLoading ? "Loading batch…" : "Load batch"}</span>
                     )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>

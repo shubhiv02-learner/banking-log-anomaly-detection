@@ -100,21 +100,38 @@ function IncidentsPage() {
     [filtered],
   );
 
-  const counts = [
-    { p: "Open", n: all.filter((a) => a.status === "OPEN").length },
+  const counts: {
+    p: string;
+    n: number;
+    statusPill?: AlertStatus;
+    priorityBadge?: Priority;
+  }[] = [
+    {
+      p: "Open",
+      n: all.filter((a) => a.status === "OPEN").length,
+      statusPill: "OPEN",
+    },
     {
       p: "Assigned",
       n: all.filter((a) => a.status === "ASSIGNED").length,
-      statusPill: "ASSIGNED" as AlertStatus,
+      statusPill: "ASSIGNED",
     },
-    { p: "Resolved", n: all.filter((a) => a.status === "RESOLVED").length },
-    { p: "Closed", n: all.filter((a) => a.status === "CLOSED").length },
+    {
+      p: "Resolved",
+      n: all.filter((a) => a.status === "RESOLVED").length,
+      statusPill: "RESOLVED",
+    },
+    {
+      p: "Critical",
+      n: all.filter((a) => a.priority === "Critical" && a.status === "OPEN").length,
+      priorityBadge: "Critical",
+    },
   ];
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {counts.map(({ p, n, statusPill }) => (
+        {counts.map(({ p, n, statusPill, priorityBadge }) => (
           <Card key={p}>
             <CardContent className="p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -122,14 +139,10 @@ function IncidentsPage() {
               </p>
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-mono text-2xl font-semibold">{n}</span>
-                {statusPill ? (
-                  <StatusPill status={statusPill} />
-                ) : p === "Open" ? (
-                  <StatusPill status="OPEN" />
-                ) : p === "Resolved" ? (
-                  <StatusPill status="RESOLVED" />
+                {priorityBadge ? (
+                  <PriorityBadge priority={priorityBadge} />
                 ) : (
-                  <StatusPill status="CLOSED" />
+                  <StatusPill status={statusPill ?? "OPEN"} />
                 )}
               </div>
             </CardContent>
@@ -217,7 +230,7 @@ function IncidentsPage() {
                   </TableCell>
                   <TableCell className="w-[16%] text-center align-middle">
                     <div className="flex items-center justify-center gap-1">
-                      <IncidentDetailsDialog item={a} />
+                      <IncidentDetailsDialog item={a} tickets={all} />
                       {action ? (
                         <Button
                           type="button"

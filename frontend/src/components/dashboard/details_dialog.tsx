@@ -1,5 +1,5 @@
 // src/components/dashboard/details_dialog.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,22 @@ type ExtensibleItem = (Alert | Ticket) & {
 
 interface IncidentDetailsDialogProps {
   item: ExtensibleItem;
+  /** Latest incident rows. When set, the open dialog follows this list by id. */
+  tickets?: Ticket[];
+}
+
+function ticketNotes(ticket: Ticket): string {
+  const lines: string[] = [];
+  if (ticket.resolution?.trim()) {
+    lines.push(`• Resolution        : ${ticket.resolution.trim()}`);
+  }
+  if (ticket.preventive_action?.trim()) {
+    lines.push(`• Preventive Action : ${ticket.preventive_action.trim()}`);
+  }
+  if (lines.length === 0) {
+    return "No manual engineering notes have been appended yet.";
+  }
+  return lines.join("\n");
 }
 
 const PANEL =
@@ -31,27 +47,31 @@ const PANEL =
 const TAB_TRIGGER =
   "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground";
 
-export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
-  const isAlert = "final_score" in item;
+export function IncidentDetailsDialog({ item, tickets }: IncidentDetailsDialogProps) {
+  const displayItem = useMemo(() => {
+    if (!tickets) return item;
+    return tickets.find((ticket) => ticket.id === item.id) ?? item;
+  }, [item, tickets]);
+  const isAlert = "final_score" in displayItem;
 
   const [isOpen, setIsOpen] = useState(false);
   const [metrics, setMetrics] = useState<(WindowMetric & Partial<WindowMetricFull>) | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && isAlert && item.window_metric_id) {
+    if (isOpen && isAlert && displayItem.window_metric_id) {
       setIsLoading(true);
 
       Promise.all([
         api.listWindowMetrics(),
-        api.get_window_metric_details_by_id(item.window_metric_id),
+        api.get_window_metric_details_by_id(displayItem.window_metric_id),
       ])
         .then(([listData, detailsData]) => {
           const metricList: WindowMetric[] = Array.isArray(listData)
             ? listData
             : ((listData as { data?: WindowMetric[] })?.data ?? []);
 
-          const matchedMetric = metricList.find((m) => m.id === item.window_metric_id);
+          const matchedMetric = metricList.find((m) => m.id === displayItem.window_metric_id);
 
           if (matchedMetric && detailsData) {
             setMetrics({
@@ -67,7 +87,7 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
         })
         .finally(() => setIsLoading(false));
     }
-  }, [isOpen, isAlert, item.window_metric_id]);
+  }, [isOpen, isAlert, displayItem.window_metric_id]);
 
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return "N/A";
@@ -84,9 +104,9 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
         {isLoading
           ? "Loading evaluation window metrics…"
           : `--- SentinelIQ Real-Time Alert Stream ---
-[Target Node]     : ${item.service.toUpperCase()}
-[Breach Severity] : ${item.priority.toUpperCase()}
-[Log Event Time]  : ${item.created_at}
+[Target Node]     : ${displayItem.service.toUpperCase()}
+[Breach Severity] : ${displayItem.priority.toUpperCase()}
+[Log Event Time]  : ${displayItem.created_at}
 
 === Evaluation Window Timeframe ===
 • Window Start    : ${metrics?.window_start ? formatTime(metrics.window_start) : "No window tracking start timestamp linked"}
@@ -113,14 +133,15 @@ export function IncidentDetailsDialog({ item }: IncidentDetailsDialogProps) {
     <div className={PANEL}>
       <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">
         {`[SYSTEM CORRELATION]
-An incident workflow state has been initialized targeting the "${SERVICE_LABELS[item.service] ?? item.service}" service layer.
+An incident workflow state has been initialized targeting the "${SERVICE_LABELS[displayItem.service] ?? displayItem.service}" service layer.
 
-• Alert Context ID  : ${"alert_id" in item ? item.alert_id || "None linked" : "None linked"}
-• Assigned Analyst  : ${"assignee" in item ? item.assignee || "Unassigned (Triage Required)" : "Unassigned"}
-• Dispatch Status   : Notification sent ${item.notification_time ? formatTime(item.notification_time) : "Pending"}
-• Ticket Reference  : #${"ticket_id" in item ? item.ticket_id || item.id : item.id}
+• Alert Context ID  : ${"alert_id" in displayItem ? displayItem.alert_id || "None linked" : "None linked"}
+• Assigned Analyst  : ${"assignee" in displayItem ? displayItem.assignee || "Unassigned (Triage Required)" : "Unassigned"}
+• Workflow Status   : ${displayItem.status}
+• Dispatch Status   : Notification sent ${displayItem.notification_time ? formatTime(displayItem.notification_time) : "Pending"}
+• Ticket Reference  : #${"ticket_id" in displayItem ? displayItem.ticket_id || displayItem.id : displayItem.id}
 
-No manual engineering notes have been appended yet.`}
+${"resolution" in displayItem ? ticketNotes(displayItem) : "No manual engineering notes have been appended yet."}`}
       </pre>
     </div>
   );
@@ -139,8 +160,8 @@ No manual engineering notes have been appended yet.`}
       <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto gap-5 bg-background text-foreground border-2 border-primary/40 shadow-2xl ring-2 ring-foreground/25">
         <DialogHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <PriorityBadge priority={item.priority} />
-            <StatusPill status={item.status} />
+            <PriorityBadge priority={displayItem.priority} />
+            <StatusPill status={displayItem.status} />
           </div>
           <DialogTitle className="text-xl font-semibold tracking-tight flex items-center gap-2">
             {isAlert ? (
@@ -148,7 +169,7 @@ No manual engineering notes have been appended yet.`}
             ) : (
               <ShieldAlert className="w-5 h-5 text-red-500" />
             )}
-            {isAlert ? "Alert Threat Telemetry" : "Incident Ticket Logs"}: #{item.id}
+            {isAlert ? "Alert Threat Telemetry" : "Incident Ticket Logs"}: #{displayItem.id}
           </DialogTitle>
         </DialogHeader>
 
@@ -158,7 +179,7 @@ No manual engineering notes have been appended yet.`}
             <div>
               <p className="text-xs text-muted-foreground">Target Domain Service</p>
               <p className="font-medium text-foreground">
-                {SERVICE_LABELS[item.service] ?? item.service}
+                {SERVICE_LABELS[displayItem.service] ?? displayItem.service}
               </p>
             </div>
           </div>
@@ -169,7 +190,7 @@ No manual engineering notes have been appended yet.`}
               <div>
                 <p className="text-xs text-muted-foreground">Anomaly Engine Score</p>
                 <p className="font-mono font-semibold text-amber-500">
-                  {item.final_score.toFixed(3)}
+                  {displayItem.final_score.toFixed(3)}
                 </p>
               </div>
             </div>
@@ -180,7 +201,7 @@ No manual engineering notes have been appended yet.`}
                 <div>
                   <p className="text-xs text-muted-foreground">Ticket Reference</p>
                   <p className="font-mono font-medium text-foreground">
-                    {"ticket_id" in item ? item.ticket_id || "N/A" : "N/A"}
+                    {"ticket_id" in displayItem ? displayItem.ticket_id || "N/A" : "N/A"}
                   </p>
                 </div>
               </div>
@@ -189,7 +210,7 @@ No manual engineering notes have been appended yet.`}
                 <div>
                   <p className="text-xs text-muted-foreground">Assigned Analyst</p>
                   <p className="font-medium text-foreground">
-                    {"assignee" in item ? item.assignee || "Unassigned" : "Unassigned"}
+                    {"assignee" in displayItem ? displayItem.assignee || "Unassigned" : "Unassigned"}
                   </p>
                 </div>
               </div>
@@ -276,7 +297,7 @@ No manual engineering notes have been appended yet.`}
               <div className={`${PANEL} pr-1`}>
                 <div className="p-3">
                   <PayloadSummaryView
-                    value={"incident_summary" in item ? item.incident_summary : null}
+                    value={"incident_summary" in displayItem ? displayItem.incident_summary : null}
                     emptyLabel="No incident summary linked"
                   />
                 </div>
@@ -284,7 +305,7 @@ No manual engineering notes have been appended yet.`}
             </TabsContent>
             <TabsContent value="raw" className="mt-3">
               <JsonRawView
-                value={"incident_summary" in item ? item.incident_summary : null}
+                value={"incident_summary" in displayItem ? displayItem.incident_summary : null}
               />
             </TabsContent>
           </Tabs>
