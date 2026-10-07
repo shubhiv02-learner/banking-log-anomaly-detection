@@ -19,6 +19,7 @@ from .config import (
     N8N_CLOSE_WEBHOOK,
 )
 from .logging_config import get_logger, setup_logging
+from consumer.batch_replay import kafka_enabled, replay_csv
 from .services.incident_actions import (
     IncidentActionError,
     apply_dashboard_incident_action,
@@ -1055,6 +1056,28 @@ def get_current_user(
     if user is None or not user.active:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return user
+
+
+@app.get("/runtime-config")
+def runtime_config(current_user: UserMaster = Depends(get_current_user)):
+    logger.info("Runtime config requested (user_id=%s)", current_user.user_id)
+    return {"kafka_enabled": kafka_enabled()}
+
+
+@app.post("/replay/logs")
+def replay_logs(current_user: UserMaster = Depends(get_current_user)):
+    if kafka_enabled():
+        raise HTTPException(
+            status_code=409,
+            detail="Batch replay is disabled while Kafka is enabled",
+        )
+    logger.info("Batch replay requested (user_id=%s)", current_user.user_id)
+    try:
+        return replay_csv()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
 
 
 @app.get("/users", response_model=list[schemas.DashboardUser])

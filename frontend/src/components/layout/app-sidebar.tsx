@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
@@ -7,7 +8,9 @@ import {
   LogOut,
   MessageSquare,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Sidebar,
@@ -25,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useCopilot } from "@/components/copilot/copilot-context";
 import { useAuth } from "@/lib/auth-context";
+import { api, BATCH_REPLAY_EVENT } from "@/lib/api/client";
 
 const navItems = [
   { title: "Executive Dashboard", url: "/", icon: LayoutDashboard },
@@ -41,6 +45,32 @@ export function AppSidebar() {
     url === "/" ? pathname === "/" : pathname.startsWith(url);
   const { openCopilot } = useCopilot();
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const runtimeConfig = useQuery({
+    queryKey: ["runtime-config"],
+    queryFn: api.runtimeConfig,
+    staleTime: Infinity,
+  });
+  const showBatch = runtimeConfig.data?.kafka_enabled === false;
+  const replay = useMutation({
+    mutationFn: api.replayLogs,
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      await queryClient.invalidateQueries({ queryKey: ["window-metrics"] });
+      await queryClient.invalidateQueries({ queryKey: ["services"] });
+      window.dispatchEvent(new Event(BATCH_REPLAY_EVENT));
+      const summary = `Loaded ${result.windows_written} windows and ${result.alerts_written} alerts`;
+      if (result.failures > 0) {
+        toast.warning(`${summary}. ${result.failures} windows failed.`);
+      } else {
+        toast.success(summary);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Batch load failed");
+    },
+  });
   const displayName = user?.name || "Signed in";
   const displayEmail = user?.email || "";
   const initials = displayName
@@ -85,6 +115,21 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {showBatch ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    type="button"
+                    tooltip="Load batch"
+                    disabled={replay.isPending}
+                    onClick={() => replay.mutate()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {!collapsed && (
+                      <span>{replay.isPending ? "Loading batch…" : "Load batch"}</span>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

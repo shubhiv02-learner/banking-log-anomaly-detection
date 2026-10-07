@@ -1,6 +1,9 @@
 # Window Configuration
 WINDOW_SIZE_MINUTES = 1 #later 5
 
+# False: the web app can load the CSV batch. True: the Kafka consumer is the only ingest path.
+KAFKA_ENABLED = False
+
 # Rolling Normalization
 ROLLING_NORMALIZATION_WINDOW = 2 #temp 2, 288 × 5 min = 24 hours
 

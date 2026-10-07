@@ -22,7 +22,7 @@ import {
 import { PriorityBadge } from "@/components/dashboard/priority-badge";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
-import { api } from "@/lib/api/client";
+import { api, BATCH_REPLAY_EVENT } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import type { Alert, AlertStatus, Priority, ServiceCount } from "@/lib/api/types";
 
@@ -53,13 +53,19 @@ function AlertsPage() {
   const [service, setService] = useState<string>("all");
 
   useEffect(() => {
-    api.listAlerts()
-      .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
-      .catch((err) => console.error("Failed to fetch alerts:", err));
+    function loadAlerts() {
+      api.listAlerts()
+        .then((data) => setAll(Array.isArray(data) ? data : data?.data ?? []))
+        .catch((err) => console.error("Failed to fetch alerts:", err));
 
-    api.listServices()
-      .then((data) => setServices(Array.isArray(data) ? data : data?.data ?? []))
-      .catch((err) => console.error("Failed to fetch services:", err));
+      api.listServices()
+        .then((data) => setServices(Array.isArray(data) ? data : data?.data ?? []))
+        .catch((err) => console.error("Failed to fetch services:", err));
+    }
+
+    loadAlerts();
+    window.addEventListener(BATCH_REPLAY_EVENT, loadAlerts);
+    return () => window.removeEventListener(BATCH_REPLAY_EVENT, loadAlerts);
   }, []);
 
   const filtered = useMemo(() => {

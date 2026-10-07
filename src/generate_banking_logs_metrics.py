@@ -209,15 +209,22 @@ def generate_correlation_analysis(df):
 # STEP 7 — BAYESIAN PRIORITIZATION
 # ============================================
 
+def _peak(series):
+    peak = pd.to_numeric(series, errors="coerce").max()
+    if pd.isna(peak) or peak == 0:
+        return 1
+    return peak
+
+
 def apply_bayesian_prioritization(df):
     import pandas
     df['incident_probability'] = (round(
 
-        0.4 * (df['persistence_score'] / df['persistence_score'].max())
+        0.4 * (df['persistence_score'] / _peak(df['persistence_score']))
         +
-        0.3 * (df['error_count']/df['error_count'].max())
+        0.3 * (df['error_count'] / _peak(df['error_count']))
         +
-        0.3 * (df['cpu_usage']/df['cpu_usage'].max()), 2)
+        0.3 * (df['cpu_usage'] / _peak(df['cpu_usage'])), 2)
     )
 
     df['priority'] = pandas.cut(df['incident_probability'], bins=[0, 0.3, 0.5, 0.7,1],

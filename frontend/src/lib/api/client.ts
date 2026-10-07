@@ -64,7 +64,7 @@ async function httpPost<T>(path: string, body: unknown): Promise<T> {
       /* ignore */
     }
     throw new Error(
-      path === "/auth/login" || path === "/tickets/assign"
+      path === "/auth/login" || path === "/tickets/assign" || path === "/replay/logs"
         ? detail
         : `API ${detail} — ${path}`,
     );
@@ -178,8 +178,24 @@ export interface IncidentActionResponse {
   assignee: string | null;
 }
 
+export interface RuntimeConfig {
+  kafka_enabled: boolean;
+}
+
+export interface BatchReplayResult {
+  windows_written: number;
+  alerts_written: number;
+  services: string[];
+  rows: number;
+  failures: number;
+}
+
+export const BATCH_REPLAY_EVENT = "batch-replay-complete";
+
 export const api = {
   health: () => http<{ status: string }>("/health"),
+  runtimeConfig: () => http<RuntimeConfig>("/runtime-config"),
+  replayLogs: () => httpPost<BatchReplayResult>("/replay/logs", {}),
   login: (email: string, password: string) =>
     httpPost<LoginResponse>("/auth/login", { email, password }),
   me: () => http<AuthUser>("/auth/me"),

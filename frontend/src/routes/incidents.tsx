@@ -26,7 +26,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { IncidentDetailsDialog } from "@/components/dashboard/details_dialog";
 import { IncidentActionDialog } from "@/components/dashboard/incident-action-dialog";
 import { Button } from "@/components/ui/button";
-import { api, type DashboardUser, type IncidentAction } from "@/lib/api/client";
+import { api, BATCH_REPLAY_EVENT, type DashboardUser, type IncidentAction } from "@/lib/api/client";
 import { SERVICE_LABELS } from "@/lib/api/placeholder-data";
 import { useAuth } from "@/lib/auth-context";
 
@@ -83,6 +83,8 @@ function IncidentsPage() {
     api.listUsers()
       .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Failed to fetch users:", err));
+    window.addEventListener(BATCH_REPLAY_EVENT, loadIncidents);
+    return () => window.removeEventListener(BATCH_REPLAY_EVENT, loadIncidents);
   }, []);
 
   const filtered = useMemo(() => {
