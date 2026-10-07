@@ -19,3 +19,18 @@ class SalverisUnavailable(SalverisError):
 
 class SalverisConfigError(SalverisError):
     """Missing or invalid Salveris configuration."""
+
+
+SALVERIS_RATE_LIMIT_DETAIL = "Salveris rate limit reached. Try again in a moment."
+
+
+class SalverisRateLimitError(SalverisError):
+    """Salveris rejected the call because of a rate limit."""
+
+    def __init__(
+        self,
+        message: str = SALVERIS_RATE_LIMIT_DETAIL,
+        *,
+        status_code: int | None = 429,
+    ):
+        super().__init__(message, status_code=status_code)

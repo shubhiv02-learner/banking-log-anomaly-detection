@@ -989,9 +989,11 @@ def get_assignee( assigned_to: str, users: list[UserMaster]):
 ##################################################################
 
 from backend.integrations.salveris.exceptions import (
+    SALVERIS_RATE_LIMIT_DETAIL,
     SalverisAuthError,
     SalverisConfigError,
     SalverisError,
+    SalverisRateLimitError,
     SalverisUnavailable,
 )
 from backend.integrations.salveris.models import (
@@ -1018,6 +1020,8 @@ from backend.services.copilot_service import copilot_service
 
 
 def _map_salveris_http(exc: SalverisError) -> HTTPException:
+    if isinstance(exc, SalverisRateLimitError):
+        return HTTPException(status_code=429, detail=SALVERIS_RATE_LIMIT_DETAIL)
     if isinstance(exc, SalverisConfigError):
         return HTTPException(status_code=503, detail=str(exc))
     if isinstance(exc, SalverisAuthError):
@@ -1151,6 +1155,8 @@ def copilot_search(
         return result
     except ActingPrincipalMissing as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except SalverisRateLimitError as exc:
+        raise _map_salveris_http(exc) from exc
     except SalverisError as exc:
         logger.error("Copilot search failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
@@ -1186,6 +1192,8 @@ def copilot_ask(
         return result
     except ActingPrincipalMissing as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except SalverisRateLimitError as exc:
+        raise _map_salveris_http(exc) from exc
     except SalverisError as exc:
         logger.error("Copilot ask failed", exc_info=True)
         raise _map_salveris_http(exc) from exc
@@ -1214,6 +1222,8 @@ def copilot_close(
         return result
     except ActingPrincipalMissing as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except SalverisRateLimitError as exc:
+        raise _map_salveris_http(exc) from exc
     except SalverisError as exc:
         logger.error("Copilot close failed", exc_info=True)
         raise _map_salveris_http(exc) from exc

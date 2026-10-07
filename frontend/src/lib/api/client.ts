@@ -64,7 +64,12 @@ async function httpPost<T>(path: string, body: unknown): Promise<T> {
       /* ignore */
     }
     throw new Error(
-      path === "/auth/login" || path === "/tickets/assign" || path === "/replay/logs"
+      path === "/auth/login" ||
+        path === "/tickets/assign" ||
+        path === "/replay/logs" ||
+        path === "/copilot/ask" ||
+        path === "/copilot/search" ||
+        path === "/copilot/close"
         ? detail
         : `API ${detail} — ${path}`,
     );

@@ -13,6 +13,8 @@ Contract (Salveris inbound):
 
 from __future__ import annotations
 
+import time
+from email.utils import parsedate_to_datetime
 from typing import Any, Optional
 
 import httpx
@@ -20,6 +22,7 @@ import httpx
 from backend.integrations.salveris.exceptions import (
     SalverisAuthError,
     SalverisError,
+    SalverisRateLimitError,
     SalverisUnavailable,
 )
 from backend.integrations.salveris.models import (
@@ -39,6 +42,42 @@ CAPABILITY_KNOWLEDGE_SEARCH = "KNOWLEDGE_SEARCH"
 CAPABILITY_KNOWLEDGE_ANSWER = "KNOWLEDGE_ANSWER"
 HEADER_CALLER_PROFILE = "X-Salveris-Caller-Profile"
 DEFAULT_CALLER_PROFILE = "sentryyiq"
+_MAX_RATE_LIMIT_RETRIES = 2
+_MAX_RETRY_AFTER_SECONDS = 5
+_RATE_LIMIT_BACKOFF_SECONDS = (1, 2)
+
+
+def _is_http_date(value: str) -> bool:
+    try:
+        parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return False
+    return True
+
+
+def _rate_limit_delay(retry_after: str | None, *, retries_done: int) -> float | None:
+    """Seconds to wait before another attempt, or None to stop.
+
+    A Retry-After of 1–5 seconds is honored. A missing or unusable header
+    uses a 1s then 2s backoff. An HTTP-date, or a delay longer than 5
+    seconds, stops without sleeping.
+    """
+    if retries_done >= _MAX_RATE_LIMIT_RETRIES:
+        return None
+    text = (retry_after or "").strip()
+    if not text:
+        return float(_RATE_LIMIT_BACKOFF_SECONDS[retries_done])
+    try:
+        seconds = int(text)
+    except ValueError:
+        if _is_http_date(text):
+            return None
+        return float(_RATE_LIMIT_BACKOFF_SECONDS[retries_done])
+    if seconds > _MAX_RETRY_AFTER_SECONDS:
+        return None
+    if seconds <= 0:
+        return float(_RATE_LIMIT_BACKOFF_SECONDS[retries_done])
+    return float(seconds)
 
 
 class SalverisClient:
@@ -114,6 +153,57 @@ class SalverisClient:
             bool(headers.get("Authorization")),
         )
 
+    def _send(
+        self,
+        client: httpx.Client,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json_body: dict[str, Any],
+        capability: str,
+        path: str,
+    ) -> httpx.Response:
+        """Call Salveris, retrying a short 429 up to twice."""
+        for attempt in range(1, _MAX_RATE_LIMIT_RETRIES + 2):
+            response = client.request(
+                method,
+                url,
+                headers=headers,
+                json=json_body,
+            )
+            if response.status_code != 429:
+                return response
+            delay = _rate_limit_delay(
+                response.headers.get("Retry-After"),
+                retries_done=attempt - 1,
+            )
+            if delay is None:
+                _logger.error(
+                    "Salveris rate limit persisted (capability='%s', path='%s', "
+                    "attempts=%d)",
+                    capability,
+                    path,
+                    attempt,
+                )
+                raise SalverisRateLimitError()
+            _logger.warning(
+                "Salveris rate limit; retrying (capability='%s', path='%s', "
+                "attempt=%d, retry_after_seconds=%s)",
+                capability,
+                path,
+                attempt,
+                delay,
+            )
+            time.sleep(delay)
+        _logger.error(
+            "Salveris rate limit persisted (capability='%s', path='%s', attempts=%d)",
+            capability,
+            path,
+            _MAX_RATE_LIMIT_RETRIES + 1,
+        )
+        raise SalverisRateLimitError()
+
     def _request(
         self,
         method: str,
@@ -135,11 +225,14 @@ class SalverisClient:
         )
         try:
             with httpx.Client(timeout=self._settings.timeout_seconds) as client:
-                response = client.request(
+                response = self._send(
+                    client,
                     method,
                     url,
                     headers=headers,
-                    json=json_body,
+                    json_body=json_body,
+                    capability=capability,
+                    path=path,
                 )
         except httpx.TimeoutException as exc:
             message = (
