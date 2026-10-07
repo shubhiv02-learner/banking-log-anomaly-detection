@@ -53,6 +53,11 @@ reports/
 temp/
 tmp/
 
+
+notebooks/data
+
+backend/data
+
 # SQLite Databases
 *.db
 *.sqlite3
@@ -75,7 +80,8 @@ dist/
 *.egg-info/
 
 logs/
+*.json
 
-data/
+data/raw
 
 
